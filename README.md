@@ -9,6 +9,14 @@ A CEP (Common Extensibility Platform) panel for Adobe Premiere Pro 2025/2026 tha
 3. **Transcription & Matching** — Uses Whisper to transcribe, then matches script lines to timecodes.
 4. **Project Generation** — Builds XMEML, imports into Premiere, and opens the sequence with overlays.
 
+## Template Assets
+
+The media assets used by this panel (video overlays, audio stings, Photoshop templates, Motion Graphics Templates) are not included in this repo due to file size.
+
+**Download them here and place the contents into the `templates/` folder:**
+
+> [Download template assets (Google Drive)](https://YOUR_GOOGLE_DRIVE_LINK_HERE)
+
 ## Prerequisites
 
 - **Adobe Premiere Pro** 2025 or 2026

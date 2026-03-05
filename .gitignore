@@ -1,0 +1,19 @@
+# External tools — download separately, see README
+bin/
+
+# Template media assets — download separately, see README
+templates/*.mov
+templates/*.mp3
+templates/*.m4a
+templates/*.mp4
+templates/*.psd
+templates/*.mogrt
+templates/*.aegraphic
+templates/Adobe Premiere Pro Auto-Save/
+
+# Runtime / generated
+cache.json
+.debug
+
+# Local IDE config
+.claude/

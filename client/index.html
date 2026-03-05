@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Paper Editor</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Title Bar -->
+        <div class="title-bar">
+            <h1 class="title">Paper Editor</h1>
+            <button id="btn-settings" class="btn-flat">Settings</button>
+        </div>
+
+        <div class="scroll-area">
+            <!-- ── ① SOURCES ── -->
+            <div class="card" id="sources-card">
+                <div class="section-label"><span class="step">1</span> SOURCES</div>
+                <div id="cameras-container"></div>
+                <button class="btn-accent-sm" id="btn-add-camera">+ Add Camera</button>
+
+                <label class="feature-item" style="margin-top: 10px;">
+                    <input type="checkbox" id="opt-ext-audio"> External Audio
+                    <span class="dim">— separate recorder, synced via Whisper</span>
+                </label>
+                <div class="feature-body" id="ext-audio-body" style="display: none;">
+                    <div id="ext-audio-container"></div>
+                    <button class="btn-accent-sm" id="btn-add-ext-audio">+ Add Audio Part</button>
+                </div>
+            </div>
+
+            <!-- ── ② PAPER EDIT ── -->
+            <div class="card" id="pe-card">
+                <div class="section-label"><span class="step">2</span> PAPER EDIT</div>
+                <div class="file-input-group">
+                    <label class="dim-label">Paper Edit (.txt)</label>
+                    <div class="file-row">
+                        <input type="text" id="paper-edit-path" class="text-input" placeholder="Select paper edit file...">
+                        <button class="btn-browse" data-target="paper-edit-path" data-type="file">Browse</button>
+                    </div>
+                </div>
+                <div class="file-input-group">
+                    <label class="dim-label">Project Output Directory <span class="dim">(blank = next to paper edit)</span></label>
+                    <div class="file-row">
+                        <input type="text" id="output-dir" class="text-input" placeholder="Select output directory...">
+                        <button class="btn-browse" data-target="output-dir" data-type="folder">Browse</button>
+                    </div>
+                </div>
+                <div class="settings-grid">
+                    <div class="setting-item">
+                        <label class="dim-label" title="Framerate of your footage. Auto-detected from the first camera's first part.">FPS</label>
+                        <input type="text" id="fps" class="text-input sm" value="23.976">
+                    </div>
+                    <div class="setting-item">
+                        <label class="dim-label" title="Extra seconds added before and after each matched clip.">Padding (sec)</label>
+                        <input type="text" id="padding" class="text-input sm" value="0.5">
+                    </div>
+                    <div class="setting-item">
+                        <label class="dim-label" title="Length of placeholder gaps on the timeline for NO MATCH, REVEAL, and LINK entries.">Gap (sec)</label>
+                        <input type="text" id="gap-duration" class="text-input sm" value="5.0">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── ③ FEATURES ── -->
+            <div class="card" id="features-card">
+                <div class="section-label"><span class="step">3</span> FEATURES</div>
+
+                <!-- Quote Cards -->
+                <label class="feature-item">
+                    <input type="checkbox" id="opt-quote-cards" checked> Quote Cards
+                </label>
+                <div class="feature-body" id="qc-feature-body">
+                    <div class="file-input-group">
+                        <label class="dim-label">Quote Data File (.txt)</label>
+                        <div class="file-row">
+                            <input type="text" id="qc-data-file" class="text-input" placeholder="Select quote data file...">
+                            <button class="btn-browse" data-target="qc-data-file" data-type="file">Browse</button>
+                        </div>
+                    </div>
+                    <button class="btn-browse" id="btn-generate-qc">Generate Cards in Photoshop</button>
+                    <label class="feature-sub">
+                        <input type="checkbox" id="opt-yt-clips" checked> YT Clips
+                    </label>
+                </div>
+
+                <!-- Leaderboard -->
+                <label class="feature-item">
+                    <input type="checkbox" id="opt-leaderboard" checked> Leaderboard
+                </label>
+                <div class="feature-body" id="lb-feature-body">
+                    <div class="file-input-group">
+                        <label class="dim-label">AE Leaderboard Project (.aep)</label>
+                        <div class="file-row">
+                            <input type="text" id="lb-aep-path" class="text-input" placeholder="Select .aep file...">
+                            <button class="btn-browse" data-target="lb-aep-path" data-type="file">Browse</button>
+                        </div>
+                    </div>
+                    <div class="settings-grid">
+                        <div class="setting-item">
+                            <label class="dim-label">Guest Name</label>
+                            <input type="text" id="lb-guest-name" class="text-input">
+                        </div>
+                        <div class="setting-item">
+                            <label class="dim-label">Position</label>
+                            <input type="text" id="lb-position" class="text-input sm">
+                        </div>
+                        <div class="setting-item">
+                            <label class="dim-label">Score %</label>
+                            <input type="text" id="lb-score" class="text-input sm">
+                        </div>
+                    </div>
+                    <button class="btn-browse" id="btn-process-lb">Process Leaderboard in After Effects</button>
+                </div>
+
+                <!-- Simple toggles -->
+                <div class="toggle-row" style="margin-top: 6px;">
+                    <label class="toggle-check" title="Place heart MOGRTs on score reveals"><input type="checkbox" id="opt-hearts" checked> Hearts</label>
+                    <label class="toggle-check" title="Place sparkle effects on newly revealed hearts"><input type="checkbox" id="opt-sparkles" checked> Sparkles</label>
+                    <label class="toggle-check" title="Place guest name MOGRT on intro clip"><input type="checkbox" id="opt-name-mogrt" checked> Name</label>
+                </div>
+            </div>
+
+            <!-- ── LOG + PROGRESS ── -->
+            <div class="card card-expand" id="log-card">
+                <div class="section-label">LOG <button id="btn-copy-log" class="btn-flat btn-log-copy" title="Copy log to clipboard">Copy Log</button></div>
+                <div class="error-banner" id="error-banner" style="display: none;"></div>
+                <div class="progress-bar-container">
+                    <div class="progress-bar" id="progress-bar"></div>
+                </div>
+                <div class="progress-label" id="progress-label">Ready</div>
+                <div class="log-area" id="log-area"></div>
+            </div>
+        </div>
+
+        <!-- ── GENERATE / CANCEL ── -->
+        <div class="generate-bar">
+            <button class="btn-generate" id="btn-generate">Generate Project</button>
+            <button class="btn-cancel" id="btn-cancel" style="display: none;">Cancel</button>
+        </div>
+    </div>
+
+    <!-- ── SETTINGS MODAL ── -->
+    <div class="modal-overlay" id="settings-modal" style="display: none;">
+        <div class="modal">
+            <h2 class="modal-title">Settings</h2>
+            <div class="file-input-group">
+                <label class="dim-label">Whisper Executable</label>
+                <div class="file-row">
+                    <input type="text" id="set-whisper-exe" class="text-input" placeholder="Path to whisper.exe...">
+                    <button class="btn-browse" data-target="set-whisper-exe" data-type="file">Browse</button>
+                </div>
+            </div>
+            <div class="file-input-group">
+                <label class="dim-label">FFmpeg Executable</label>
+                <div class="file-row">
+                    <input type="text" id="set-ffmpeg-exe" class="text-input" placeholder="Path to ffmpeg.exe...">
+                    <button class="btn-browse" data-target="set-ffmpeg-exe" data-type="file">Browse</button>
+                </div>
+            </div>
+            <div class="file-input-group">
+                <label class="dim-label">FFprobe Executable</label>
+                <div class="file-row">
+                    <input type="text" id="set-ffprobe-exe" class="text-input" placeholder="Path to ffprobe.exe...">
+                    <button class="btn-browse" data-target="set-ffprobe-exe" data-type="file">Browse</button>
+                </div>
+            </div>
+            <div class="file-input-group">
+                <label class="dim-label">Whisper Model (.bin)</label>
+                <div class="file-row">
+                    <input type="text" id="set-whisper-model" class="text-input" placeholder="Path to ggml-base.en.bin...">
+                    <button class="btn-browse" data-target="set-whisper-model" data-type="file">Browse</button>
+                </div>
+            </div>
+            <div class="file-input-group">
+                <label class="dim-label">Photoshop Executable</label>
+                <div class="file-row">
+                    <input type="text" id="set-ps-exe" class="text-input" placeholder="Path to Photoshop.exe...">
+                    <button class="btn-browse" data-target="set-ps-exe" data-type="file">Browse</button>
+                </div>
+            </div>
+            <div class="file-input-group">
+                <label class="dim-label">After Effects Executable</label>
+                <div class="file-row">
+                    <input type="text" id="set-ae-exe" class="text-input" placeholder="Path to afterfx.exe...">
+                    <button class="btn-browse" data-target="set-ae-exe" data-type="file">Browse</button>
+                </div>
+            </div>
+            <div class="file-input-group">
+                <label class="dim-label">yt-dlp Executable (for YouTube clip downloads)</label>
+                <div class="file-row">
+                    <input type="text" id="set-yt-dlp-exe" class="text-input" placeholder="Path to yt-dlp.exe...">
+                    <button class="btn-browse" data-target="set-yt-dlp-exe" data-type="file">Browse</button>
+                </div>
+            </div>
+            <div class="file-input-group">
+                <label class="dim-label">Hearts MOGRT (.mogrt)</label>
+                <div class="file-row">
+                    <input type="text" id="set-hearts-mogrt" class="text-input" placeholder="Path to Hearts .mogrt file...">
+                    <button class="btn-browse" data-target="set-hearts-mogrt" data-type="file">Browse</button>
+                </div>
+            </div>
+            <div class="file-input-group">
+                <label class="dim-label">Quote Card Template (.psd)</label>
+                <div class="file-row">
+                    <input type="text" id="set-qc-template-psd" class="text-input" placeholder="Path to Quote Card Template.psd...">
+                    <button class="btn-browse" data-target="set-qc-template-psd" data-type="file">Browse</button>
+                </div>
+            </div>
+            <div class="file-input-group">
+                <label class="dim-label">Name MOGRT (.mogrt)</label>
+                <div class="file-row">
+                    <input type="text" id="set-name-mogrt" class="text-input" placeholder="Path to Name.mogrt...">
+                    <button class="btn-browse" data-target="set-name-mogrt" data-type="file">Browse</button>
+                </div>
+            </div>
+            <div class="file-input-group">
+                <label class="dim-label">Title Card (.mov)</label>
+                <div class="file-row">
+                    <input type="text" id="set-title-card-mov" class="text-input" placeholder="Path to QUOTES_Title Card.mov...">
+                    <button class="btn-browse" data-target="set-title-card-mov" data-type="file">Browse</button>
+                </div>
+            </div>
+            <div class="file-input-group">
+                <label class="dim-label">END CARD nologo (.mov)</label>
+                <div class="file-row">
+                    <input type="text" id="set-endcard-nologo-mov" class="text-input" placeholder="Path to 16-9 fall damage END CARD_nologo.mov...">
+                    <button class="btn-browse" data-target="set-endcard-nologo-mov" data-type="file">Browse</button>
+                </div>
+            </div>
+            <div class="file-input-group">
+                <label class="dim-label">END CARD 2 (.mov)</label>
+                <div class="file-row">
+                    <input type="text" id="set-endcard2-mov" class="text-input" placeholder="Path to 16-9 fall damage END CARD 2.mov...">
+                    <button class="btn-browse" data-target="set-endcard2-mov" data-type="file">Browse</button>
+                </div>
+            </div>
+            <div class="settings-grid">
+                <div class="setting-item">
+                    <label class="dim-label">Match Threshold</label>
+                    <input type="text" id="set-match-threshold" class="text-input sm" value="0.5">
+                    <small class="help-text">0–1. Lower = more clips matched (more false positives). Default: 0.5</small>
+                </div>
+                <div class="setting-item">
+                    <label class="dim-label">Similarity Weight</label>
+                    <input type="text" id="set-similarity-weight" class="text-input sm" value="0.7">
+                    <small class="help-text">0–1. How much to weight text vs timecode proximity. Default: 0.7</small>
+                </div>
+            </div>
+            <div class="modal-actions" style="display: flex; justify-content: space-between; align-items: center;">
+                <button class="btn-flat" id="btn-clear-cache" title="Reset cameras, paths, and toggles to defaults">Clear Session Cache</button>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button class="btn-flat" id="btn-export-settings" title="Save current settings to a JSON file">Export Settings</button>
+                    <button class="btn-flat" id="btn-import-settings" title="Load settings from a JSON file">Import Settings</button>
+                    <button class="btn-accent-sm" id="btn-settings-done">Done</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../lib/CSInterface.js"></script>
+    <script src="js/paper-edit-parser.js"></script>
+    <script src="js/xmeml-builder.js"></script>
+    <script src="js/hearts.js"></script>
+    <script src="js/quote-cards.js"></script>
+    <script src="js/youtube.js"></script>
+    <script src="js/processing.js"></script>
+    <script src="js/leaderboard-ae.js"></script>
+    <script src="js/ae-runner.js"></script>
+    <script src="js/leaderboard-end.js"></script>
+    <script src="js/name-mogrt.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
