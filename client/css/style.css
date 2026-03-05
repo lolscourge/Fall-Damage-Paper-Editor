@@ -1,0 +1,530 @@
+/* ── Paper Editor CEP Panel – Dark Theme ── */
+
+:root {
+    --bg:           #1e1e2e;
+    --surface:      #282840;
+    --surface2:     #313150;
+    --border:       #3e3e5e;
+    --text:         #e0e0f0;
+    --text-dim:     #8888a8;
+    --accent:       #7c6ff7;
+    --accent-hover: #9488ff;
+    --green:        #50e0a0;
+    --red:          #f06070;
+    --entry-bg:     #22223a;
+    --progress-bg:  #2a2a44;
+    --log-bg:       #1a1a2a;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Segoe UI", -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 12px;
+    color: var(--text);
+    background: var(--bg);
+    overflow: hidden;
+    height: 100vh;
+    user-select: none;
+}
+
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+/* ── Title Bar ── */
+
+.title-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px 8px;
+    flex-shrink: 0;
+}
+
+.title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+}
+
+.btn-flat {
+    background: var(--surface2);
+    color: var(--text-dim);
+    border: none;
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.btn-flat:hover {
+    background: var(--border);
+    color: var(--text);
+}
+
+/* ── Scroll Area ── */
+
+.scroll-area {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 8px 20px 12px;
+}
+
+.scroll-area::-webkit-scrollbar {
+    width: 6px;
+}
+.scroll-area::-webkit-scrollbar-track {
+    background: transparent;
+}
+.scroll-area::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+/* ── Cards ── */
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+}
+
+.card-expand {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 120px;
+}
+
+.section-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+}
+
+.section-label .dim {
+    font-weight: 400;
+}
+
+/* ── Cameras ── */
+
+.camera-block {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+}
+
+.camera-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.camera-label-input {
+    width: 90px;
+    background: var(--entry-bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    padding: 3px 6px;
+    font-size: 11px;
+    font-family: inherit;
+}
+
+.ref-badge {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--green);
+    padding: 1px 6px;
+    border: 1px solid var(--green);
+    border-radius: 3px;
+}
+
+.part-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 3px;
+}
+
+.part-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    min-width: 38px;
+}
+
+/* ── Buttons ── */
+
+.btn-sm {
+    background: var(--surface2);
+    color: var(--text);
+    border: none;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.btn-sm:hover { background: var(--border); }
+
+.btn-accent-sm {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 5px 12px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.btn-accent-sm:hover { background: var(--accent-hover); }
+
+.btn-remove {
+    background: var(--red);
+    color: #fff;
+    border: none;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.btn-remove:hover { background: #ff7080; }
+
+.btn-browse {
+    background: var(--surface2);
+    color: var(--text);
+    border: none;
+    padding: 4px 10px;
+    border-radius: 3px;
+    font-size: 10px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+}
+.btn-browse:hover { background: var(--border); }
+
+/* ── File Inputs ── */
+
+.file-input-group {
+    margin-bottom: 8px;
+}
+
+.dim-label {
+    display: block;
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 3px;
+}
+
+.dim { color: var(--text-dim); font-weight: 400; }
+
+.hint {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    font-style: italic;
+}
+
+.file-row {
+    display: flex;
+    gap: 4px;
+}
+
+.text-input {
+    flex: 1;
+    background: var(--entry-bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    padding: 5px 8px;
+    font-size: 11px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color 0.15s;
+}
+.text-input:focus {
+    border-color: var(--accent);
+}
+.text-input.sm {
+    flex: none;
+    width: 70px;
+}
+
+.settings-grid {
+    display: flex;
+    gap: 12px;
+    margin-top: 6px;
+}
+
+.setting-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* ── Step Numbers ── */
+
+.step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 700;
+    margin-right: 6px;
+    vertical-align: middle;
+}
+
+/* ── Feature Toggles (checkbox-controlled sections) ── */
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text);
+    cursor: pointer;
+    padding: 6px 0 2px;
+}
+.feature-item input { margin: 0; cursor: pointer; }
+.feature-item .dim { font-weight: 400; font-size: 10px; }
+.feature-item.off { color: var(--text-dim); }
+
+.feature-body {
+    padding: 6px 0 8px 22px;
+}
+
+.feature-sub {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: var(--text-dim);
+    cursor: pointer;
+    margin-top: 6px;
+}
+.feature-sub input { margin: 0; cursor: pointer; }
+.feature-sub.off { opacity: 0.4; pointer-events: none; }
+
+/* ── Simple toggle row (Hearts/Sparkles/Name) ── */
+
+.toggle-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    padding: 8px 0 2px;
+}
+.toggle-check {
+    font-size: 10px;
+    color: var(--text-dim);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.toggle-check input { margin: 0; cursor: pointer; }
+.toggle-check.off { opacity: 0.4; }
+.toggle-check.off input:disabled { pointer-events: none; }
+
+/* ── Error Banner ── */
+
+.error-banner {
+    background: rgba(240, 96, 112, 0.15);
+    border: 1px solid var(--red);
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-bottom: 8px;
+    font-size: 11px;
+    color: var(--red);
+}
+
+/* ── Progress Bar ── */
+
+.progress-bar-container {
+    background: var(--progress-bg);
+    border-radius: 3px;
+    height: 5px;
+    margin-bottom: 4px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+.progress-label {
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+}
+
+/* ── Log Area ── */
+
+.log-area {
+    flex: 1;
+    background: var(--log-bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 6px 8px;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    overflow-y: auto;
+    min-height: 80px;
+    max-height: 200px;
+    word-wrap: break-word;
+    line-height: 1.4;
+}
+
+.log-area::-webkit-scrollbar {
+    width: 5px;
+}
+.log-area::-webkit-scrollbar-track {
+    background: transparent;
+}
+.log-area::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+.log-info { color: var(--text-dim); }
+.log-warn { color: var(--red); }
+.log-success { color: var(--green); }
+
+/* ── Generate Button ── */
+
+.generate-bar {
+    display: flex;
+    gap: 10px;
+    padding: 10px 20px 16px;
+    flex-shrink: 0;
+}
+
+.btn-generate {
+    width: 100%;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 14px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.btn-generate:hover { background: var(--accent-hover); }
+.btn-generate:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-cancel {
+    background: var(--red);
+    color: #fff;
+    border: none;
+    padding: 14px 20px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.btn-cancel:hover { background: #ff7080; }
+
+/* ── Modal ── */
+
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+}
+
+.modal {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+
+.modal-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 16px;
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 16px;
+}
+
+/* ── Ext Audio Parts ── */
+
+.ext-audio-row {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 4px;
+}
+
+/* ── Utility ── */
+
+.hidden { display: none !important; }
+
+.spacer-sm { height: 4px; }
+.spacer-md { height: 8px; }
+
+/* ── Inline help text (#9) ── */
+
+.help-text {
+    display: block;
+    font-size: 9px;
+    color: var(--text-dim);
+    margin-top: 3px;
+    line-height: 1.3;
+    font-style: italic;
+}
+
+/* ── Copy Log button (#15) ── */
+
+.btn-log-copy {
+    float: right;
+    padding: 2px 8px;
+    font-size: 9px;
+    margin-top: -1px;
+}
