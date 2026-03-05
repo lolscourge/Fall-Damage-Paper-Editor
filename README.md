@@ -1,6 +1,6 @@
 # Paper Editor CEP Panel
 
-A CEP (Common Extensibility Platform) panel for Adobe Premiere Pro 2025/2026 that automates **paper edit → timeline** workflows. Designed for structured video production (e.g. "Fall Damage"–style shows) with dialogue clips, reveals, leaderboards, quote cards, and external audio.
+A CEP (Common Extensibility Platform) panel for Adobe Premiere Pro 2025/2026 that automates **paper edit → timeline** workflows for the Dexerto YT show Fall Damage. Designed for structured video production with dialogue clips, reveals, leaderboards, quote cards, and external audio.
 
 ## What it does
 
