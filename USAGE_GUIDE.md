@@ -144,7 +144,8 @@ End card
 | `1:23` or `0:01:23` or `0:01:23:12` | Timecode — marks the start of a dialogue clip |
 | Text after timecode | Dialogue — matched against the transcription to find the clip |
 | `Reveal - <text>` | Scoring reveal — creates a gap; Hearts MOGRT placed here if enabled |
-| `Leaderboard reveal` | Leaderboard-specific reveal |
+| `Leaderboard reveal` (1st) | Shows the leaderboard grid PNG (static scores) |
+| `Leaderboard reveal` (2nd) | Shows the animated leaderboard `.mov` + triggers the end celebration block (confetti, fireworks, music, SFX) |
 | `Insound <text>` | In-sound cue — creates a labelled gap on the timeline |
 | `End card` | End card placeholder |
 | URL (http/https) | Link — YouTube clip downloaded and placed here (if YT Clips enabled) |
@@ -185,10 +186,12 @@ Here's how each element gets placed on the generated timeline:
 - **NO MATCH** — A text generator gap (default 5s) with the unmatched dialogue text as a label. Fill these manually.
 - **Quote cards** — PNG overlaid on the quote card track above the dialogue clip it belongs to, with END CARD nologo underneath as a background.
 - **Intro card** — On the first clip: END CARD nologo (V1) + Title Card (V2) stacked underneath, Name MOGRT placed on top via JSX with the guest's name.
-- **Reveals** — A gap with text label. If Hearts is enabled, heart MOGRTs are placed at each reveal via JSX. If a YouTube clip is associated, it's placed on the YT track. If the leaderboard is enabled, the leaderboard `.mov` is placed on its track.
+- **Reveals** — A gap with text label. If Hearts is enabled, heart MOGRTs are placed at each reveal via JSX. If a YouTube clip is associated, it's placed on the YT track.
+- **Leaderboard reveal (1st)** — The leaderboard grid PNG (static snapshot of scores) is placed on the leaderboard track.
+- **Leaderboard reveal (2nd)** — The animated leaderboard `.mov` is placed on the leaderboard track. If all end celebration template files are present, an end block is appended with END CARD nologo, confetti, fireworks (with Ultra Key), music, whooshes, drum roll, climb tone, and party horn.
 - **INSOUND** — A labelled gap on the timeline. Fill with the appropriate sound effect manually.
 - **LINK** — A labelled gap. If YT Clips is enabled, the downloaded/trimmed clip is placed on the YT track.
-- **End card** — A gap with END CARD 2 `.mov` placed on the background overlay track. If the end leaderboard is enabled (2+ leaderboard reveals + all template files present), a celebration block is appended with confetti, fireworks, music, and sound effects.
+- **End card** — A gap with END CARD 2 `.mov` placed on the background overlay track.
 - **Hearts** — Heart MOGRTs placed at each scoring reveal point via JSX after import. Each heart corresponds to the score value in the reveal line (e.g. `Reveal - Name 0.5` = half heart).
 - **Sparkles** — Sparkle `.mov` effects placed on newly revealed hearts.
 
