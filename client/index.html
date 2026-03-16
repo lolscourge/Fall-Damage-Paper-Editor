@@ -7,11 +7,6 @@
 </head>
 <body>
     <div id="app">
-        <!-- Title Bar -->
-        <div class="title-bar">
-            <h1 class="title">Paper Editor</h1>
-            <button id="btn-settings" class="btn-flat">Settings</button>
-        </div>
 
         <div class="scroll-area">
             <!-- ── ① SOURCES ── -->
@@ -115,16 +110,20 @@
                 </div>
 
                 <!-- Simple toggles -->
-                <div class="toggle-row" style="margin-top: 6px;">
-                    <label class="toggle-check" title="Place heart MOGRTs on score reveals"><input type="checkbox" id="opt-hearts" checked> Hearts</label>
-                    <label class="toggle-check" title="Place sparkle effects on newly revealed hearts"><input type="checkbox" id="opt-sparkles" checked> Sparkles</label>
-                    <label class="toggle-check" title="Place guest name MOGRT on intro clip"><input type="checkbox" id="opt-name-mogrt" checked> Name</label>
-                </div>
+                <label class="feature-item" title="Place heart MOGRTs on score reveals">
+                    <input type="checkbox" id="opt-hearts" checked> Hearts
+                </label>
+                <label class="feature-item" title="Place sparkle effects on newly revealed hearts">
+                    <input type="checkbox" id="opt-sparkles" checked> Sparkles
+                </label>
+                <label class="feature-item" title="Place intro card overlays and guest name MOGRT on intro clip">
+                    <input type="checkbox" id="opt-name-mogrt" checked> Intro card
+                </label>
             </div>
 
             <!-- ── LOG + PROGRESS ── -->
             <div class="card card-expand" id="log-card">
-                <div class="section-label">LOG <button id="btn-copy-log" class="btn-flat btn-log-copy" title="Copy log to clipboard">Copy Log</button></div>
+                <div class="section-label">LOG <button id="btn-copy-log" class="btn-flat btn-log-copy" title="Copy log to clipboard">Copy Log</button> <button id="btn-settings" class="btn-flat btn-log-copy" title="Settings">Settings</button></div>
                 <div class="error-banner" id="error-banner" style="display: none;"></div>
                 <div class="progress-bar-container">
                     <div class="progress-bar" id="progress-bar"></div>
@@ -146,10 +145,10 @@
         <div class="modal">
             <h2 class="modal-title">Settings</h2>
             <div class="file-input-group">
-                <label class="dim-label">Whisper Executable</label>
+                <label class="dim-label">WhisperX Executable <span class="dim">(build with build_whisperx_exe.bat)</span></label>
                 <div class="file-row">
-                    <input type="text" id="set-whisper-exe" class="text-input" placeholder="Path to whisper.exe...">
-                    <button class="btn-browse" data-target="set-whisper-exe" data-type="file">Browse</button>
+                    <input type="text" id="set-whisperx-exe" class="text-input" placeholder="Path to whisperx_fd.exe...">
+                    <button class="btn-browse" data-target="set-whisperx-exe" data-type="file">Browse</button>
                 </div>
             </div>
             <div class="file-input-group">
@@ -167,10 +166,18 @@
                 </div>
             </div>
             <div class="file-input-group">
-                <label class="dim-label">Whisper Model (.bin)</label>
+                <label class="dim-label">WhisperX Model</label>
                 <div class="file-row">
-                    <input type="text" id="set-whisper-model" class="text-input" placeholder="Path to ggml-base.en.bin...">
-                    <button class="btn-browse" data-target="set-whisper-model" data-type="file">Browse</button>
+                    <input type="text" id="set-whisperx-model" class="text-input" placeholder="e.g. base.en, small.en, medium.en">
+                </div>
+            </div>
+            <div class="file-input-group">
+                <label class="dim-label">WhisperX Device</label>
+                <div class="file-row">
+                    <select id="set-whisperx-device" class="text-input" style="width: auto;">
+                        <option value="cpu">cpu</option>
+                        <option value="cuda">cuda</option>
+                    </select>
                 </div>
             </div>
             <div class="file-input-group">

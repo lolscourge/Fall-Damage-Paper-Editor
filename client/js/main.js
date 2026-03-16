@@ -41,6 +41,47 @@
                 console.error("[Paper Editor] probe threw:", probeErr.message);
             }
         })();
+        // Sync panel background with Premiere's theme
+        var syncThemeColor = function () {
+            try {
+                var skinInfo = csInterface.getHostEnvironment().appSkinInfo;
+                var bg = skinInfo.panelBackgroundColor.color;
+                var r = Math.round(bg.red), g = Math.round(bg.green), b = Math.round(bg.blue);
+                var hex = "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+                // Derive lighter/darker shades from the panel bg
+                var lum = (r * 299 + g * 587 + b * 114) / 1000;
+                var isDark = lum < 128;
+                var shift = isDark ? 12 : -12;
+                var shift2 = isDark ? 20 : -20;
+                var clamp = function (v) { return Math.max(0, Math.min(255, v)); };
+                var surface = "rgb(" + clamp(r + shift) + "," + clamp(g + shift) + "," + clamp(b + shift) + ")";
+                var surface2 = "rgb(" + clamp(r + shift2) + "," + clamp(g + shift2) + "," + clamp(b + shift2) + ")";
+                var border = "rgb(" + clamp(r + shift2 + 10) + "," + clamp(g + shift2 + 10) + "," + clamp(b + shift2 + 10) + ")";
+                var logBg = "rgb(" + clamp(r - 6) + "," + clamp(g - 6) + "," + clamp(b - 6) + ")";
+                var entryBg = "rgb(" + clamp(r + (isDark ? 4 : -8)) + "," + clamp(g + (isDark ? 4 : -8)) + "," + clamp(b + (isDark ? 4 : -8)) + ")";
+                var root = document.documentElement.style;
+                root.setProperty("--bg", hex);
+                root.setProperty("--surface", surface);
+                root.setProperty("--surface2", surface2);
+                root.setProperty("--border", border);
+                root.setProperty("--log-bg", logBg);
+                root.setProperty("--entry-bg", entryBg);
+                root.setProperty("--progress-bg", surface2);
+                if (!isDark) {
+                    root.setProperty("--text", "#1a1a2e");
+                    root.setProperty("--text-dim", "#555570");
+                } else {
+                    root.setProperty("--text", "#e0e0f0");
+                    root.setProperty("--text-dim", "#8888a8");
+                }
+                console.log("[Paper Editor] Theme synced: bg=" + hex + " (lum=" + Math.round(lum) + ")");
+            } catch (err) {
+                console.log("[Paper Editor] Theme sync skipped:", err.message);
+            }
+        };
+        syncThemeColor();
+        csInterface.addEventListener("com.adobe.csxs.events.ThemeColorChanged", syncThemeColor);
+
     } catch (e) {
         console.error("[Paper Editor] CSInterface init failed (not in CEP?):", e.message);
         extensionDir = __dirname || ".";
@@ -115,10 +156,11 @@
     // The install_dev.bat copies binaries into bin/ and templates into templates/.
 
     var settings = {
-        whisperExe: pathMod.join(extensionDir, "bin", "whisper.exe"),
+        whisperXExe:    pathMod.join(extensionDir, "bin", "whisperx_fd.exe"),
+        whisperXModel:  "base.en",    // model name: base.en, small.en, medium.en, large-v2, etc.
+        whisperXDevice: "cpu",        // "cpu" or "cuda"
         ffmpegExe: pathMod.join(extensionDir, "bin", "ffmpeg.exe"),
         ffprobeExe: pathMod.join(extensionDir, "bin", "ffprobe.exe"),
-        whisperModel: pathMod.join(extensionDir, "bin", "models", "ggml-base.en.bin"),
         psExe: findPhotoshopExe(),
         aeExe: AERunner.findAfterEffectsExe(),
         ytDlpExe: pathMod.join(extensionDir, "bin", "yt-dlp.exe"),
@@ -657,10 +699,11 @@
     // ── Settings Modal ──
 
     function openSettings() {
-        document.getElementById("set-whisper-exe").value = settings.whisperExe;
+        document.getElementById("set-whisperx-exe").value = settings.whisperXExe;
+        document.getElementById("set-whisperx-model").value = settings.whisperXModel;
+        document.getElementById("set-whisperx-device").value = settings.whisperXDevice;
         document.getElementById("set-ffmpeg-exe").value = settings.ffmpegExe;
         document.getElementById("set-ffprobe-exe").value = settings.ffprobeExe;
-        document.getElementById("set-whisper-model").value = settings.whisperModel;
         document.getElementById("set-ps-exe").value = settings.psExe;
         document.getElementById("set-ae-exe").value = settings.aeExe;
         document.getElementById("set-yt-dlp-exe").value = settings.ytDlpExe;
@@ -676,10 +719,11 @@
     }
 
     function closeSettings() {
-        settings.whisperExe = document.getElementById("set-whisper-exe").value;
+        settings.whisperXExe    = document.getElementById("set-whisperx-exe").value;
+        settings.whisperXModel  = document.getElementById("set-whisperx-model").value;
+        settings.whisperXDevice = document.getElementById("set-whisperx-device").value;
         settings.ffmpegExe = document.getElementById("set-ffmpeg-exe").value;
         settings.ffprobeExe = document.getElementById("set-ffprobe-exe").value;
-        settings.whisperModel = document.getElementById("set-whisper-model").value;
         settings.psExe = document.getElementById("set-ps-exe").value;
         settings.aeExe = document.getElementById("set-ae-exe").value;
         settings.ytDlpExe = document.getElementById("set-yt-dlp-exe").value;
@@ -701,8 +745,10 @@
         var cb = document.getElementById(checkboxId);
         var body = bodyId ? document.getElementById(bodyId) : null;
         cb.addEventListener("change", function () {
-            if (body) body.style.display = cb.checked ? "" : "none";
             cb.closest("label").classList.toggle("off", !cb.checked);
+            if (body) {
+                body.style.display = cb.checked ? "" : "none";
+            }
             if (subIds) {
                 subIds.forEach(function (subId) {
                     var sub = document.getElementById(subId);
@@ -747,7 +793,7 @@
             fs.writeFileSync(jsxPath, jsxContent, "utf8");
 
             log("info", "Quote cards: launching Photoshop...");
-            childProcess.spawn(settings.psExe, [jsxPath], { detached: true, windowsHide: false });
+            childProcess.spawn(settings.psExe, [jsxPath], { detached: true, windowsHide: false, stdio: "ignore" });
             log("success", "Photoshop launched. Cards will export to: " + outputDir);
         } catch (e) {
             log("warn", "Quote card generation failed: " + e.message);
@@ -954,11 +1000,8 @@
         if (!settings.ffmpegExe || !fs.existsSync(settings.ffmpegExe)) {
             return Promise.reject(new Error("ffmpeg not found at: " + settings.ffmpegExe + "\nConfigure it in Settings."));
         }
-        if (!settings.whisperExe || !fs.existsSync(settings.whisperExe)) {
-            return Promise.reject(new Error("Whisper not found at: " + settings.whisperExe + "\nConfigure it in Settings."));
-        }
-        if (!settings.whisperModel || !fs.existsSync(settings.whisperModel)) {
-            return Promise.reject(new Error("Whisper model not found at: " + settings.whisperModel + "\nConfigure it in Settings."));
+        if (!settings.whisperXExe || !fs.existsSync(settings.whisperXExe)) {
+            return Promise.reject(new Error("whisperx_fd.exe not found at: " + settings.whisperXExe + "\nRun build_whisperx_exe.bat to build it, or configure path in Settings."));
         }
 
         var optExtAudio        = document.getElementById("opt-ext-audio").checked;
@@ -973,17 +1016,27 @@
         log("info", "Starting — " + ctx.numCams + " camera(s)" +
             (ctx.hasExtAudio ? ", ext audio: " + validExtAudioParts.length + " part(s)" : "") +
             ", FPS: " + ctx.fpsVal);
-        log("info", "Whisper: " + settings.whisperExe);
+        log("info", "WhisperX: " + settings.whisperXExe + " model=" + settings.whisperXModel + " device=" + settings.whisperXDevice);
         log("info", "FFmpeg: "  + settings.ffmpegExe);
 
-        Processing.initCacheDir(pathMod.dirname(ctx.scriptPath));
-        Processing.cleanupOldCacheFiles(pathMod.join(pathMod.dirname(ctx.scriptPath), ".whisper_cache"), 7);
+        log("info", "[DBG] About to initCacheDir...");
+        try {
+            Processing.initCacheDir(pathMod.dirname(ctx.scriptPath));
+            log("info", "[DBG] initCacheDir done");
+        } catch (e) { log("warn", "[DBG] initCacheDir error: " + e.message); }
+        try {
+            Processing.cleanupOldCacheFiles(pathMod.join(pathMod.dirname(ctx.scriptPath), ".whisper_cache"), 7);
+            log("info", "[DBG] cleanupOldCacheFiles done");
+        } catch (e) { log("warn", "[DBG] cleanupOldCacheFiles error: " + e.message); }
 
+        log("info", "[DBG] step1 returning Promise.resolve()");
         return Promise.resolve();
     }
 
     function step2_detectPartDurations(ctx) {
+        log("info", "[DBG] step2 ENTERED");
         checkAbort();
+        log("info", "[DBG] step2 checkAbort passed");
         updateProgress(6, "Detecting part durations...");
         log("info", "Detecting part durations...");
 
@@ -1019,14 +1072,16 @@
         checkAbort();
         updateProgress(15, "Transcribing cameras...");
 
+        var wxOpts = { exePath: settings.whisperXExe, modelName: settings.whisperXModel, deviceName: settings.whisperXDevice };
+
         var transPromises = ctx.camInfos.map(function (cam, ci) {
             return Processing.transcribeAndMergeParts(
-                settings.whisperExe, settings.whisperModel, settings.ffmpegExe,
+                wxOpts, settings.ffmpegExe,
                 cam.parts, ctx.camDurations[ci]
             ).then(function (merged) {
                 var prog = 15 + Math.round(((ci + 1) / ctx.numCams) * 25);
                 updateProgress(prog, "Transcribed " + cam.label + " (" + (ci + 1) + "/" + ctx.numCams + ")");
-                log("info", cam.label + ": " + (merged.transcription || []).length + " segments in merged transcript");
+                log("info", cam.label + ": " + (merged.words || []).length + " words in merged transcript");
                 return merged;
             });
         });
@@ -1036,11 +1091,11 @@
             if (!ctx.hasExtAudio) return;
             updateProgress(40, "Transcribing external audio...");
             return Processing.transcribeAndMergeParts(
-                settings.whisperExe, settings.whisperModel, settings.ffmpegExe,
+                wxOpts, settings.ffmpegExe,
                 ctx.validExtAudioParts, ctx.extAudioDurations
             ).then(function (merged) {
                 ctx.extAudioWhisper = merged;
-                log("info", "External audio: " + (merged.transcription || []).length + " segments");
+                log("info", "External audio: " + (merged.words || []).length + " words");
             });
         });
     }
@@ -1123,13 +1178,22 @@
             return Promise.resolve();
         }
 
+        // Check if all expected PNGs already exist — skip Photoshop entirely if so.
+        var allPngsExist = ctx.qcEntries.every(function (entry, i) {
+            return fs.existsSync(pathMod.join(ctx.quotesFolder, QuoteCards.getPngFilename(i + 1, entry.scene)));
+        });
+        if (allPngsExist) {
+            log("info", "Quote cards: all " + ctx.qcEntries.length + " PNGs already exist — skipping Photoshop");
+            return Promise.resolve();
+        }
+
         updateProgress(52, "Generating quote cards in Photoshop...");
         var sentinelPath = pathMod.join(ctx.quotesFolder, "_done.txt");
         try { if (fs.existsSync(sentinelPath)) fs.unlinkSync(sentinelPath); } catch (ex) {}
 
         var jsxPath = pathMod.join(ctx.projectFolder, "_generate_cards.jsx");
         fs.writeFileSync(jsxPath, QuoteCards.generateQuoteJSX(ctx.qcEntries, templatePSD, ctx.quotesFolder, ctx.peName), "utf8");
-        childProcess.spawn(settings.psExe, [jsxPath], { detached: true, windowsHide: false });
+        childProcess.spawn(settings.psExe, [jsxPath], { detached: true, windowsHide: false, stdio: "ignore" });
         log("info", "Quote cards: launched Photoshop, generating " + ctx.qcEntries.length + " cards");
 
         return new Promise(function (resolve) {
@@ -1273,13 +1337,25 @@
                 var match   = Processing.findTextInWhisper(entry.text, ctx.camWhisper[0], hintSec, settings);
 
                 if (match.start !== null) {
-                    log("info", "MATCH  " + entry.tc + " -> " + match.start.toFixed(1) + "s - " + match.end.toFixed(1) + "s");
+                    var tcIn  = PaperEditParser.secondsToTc(match.start, ctx.fpsF);
+                    var tcOut = PaperEditParser.secondsToTc(match.end, ctx.fpsF);
+                    log("info", "MATCH  " + entry.tc + " -> " + tcIn + " - " + tcOut + "  (" + match.start.toFixed(2) + "s - " + match.end.toFixed(2) + "s)");
+
+                    // Apply padding (expand clip by padSec on each side)
+                    if (ctx.padSec > 0) {
+                        match.start = Math.max(0, match.start - ctx.padSec);
+                        match.end   = match.end + ctx.padSec;
+                        log("info", "  PAD  +" + ctx.padSec + "s -> " +
+                            PaperEditParser.secondsToTc(match.start, ctx.fpsF) + " - " +
+                            PaperEditParser.secondsToTc(match.end, ctx.fpsF));
+                    }
+
                     ctx.matchCount++;
 
                     var refSFrame = Math.round(match.start * ctx.fpsF);
                     var refEFrame = Math.round(match.end   * ctx.fpsF);
-                    var inFAdj    = Math.max(0, refSFrame - ctx.padFrames);
-                    var dur       = (refEFrame + ctx.padFrames) - inFAdj;
+                    var inFAdj    = refSFrame;
+                    var dur       = refEFrame - inFAdj;
 
                     var placement = { type: "clip", matched: true, duration: dur, cameras: [], extAudioClips: [], extAudioClips2: [] };
 
@@ -1322,20 +1398,42 @@
                     }
 
                     if (ctx.hasExtAudio && ctx.extAudioDurations && ctx.extAudioDurations.length > 0) {
-                        var eaStart = match.start - ctx.extAudioSyncOffset;
-                        var eaEnd   = match.end   - ctx.extAudioSyncOffset;
-                        var eaPartS = Processing.resolvePart(eaStart, ctx.extAudioDurations);
-                        var eaPartE = Processing.resolvePart(eaEnd,   ctx.extAudioDurations);
+                        var eaStart, eaEnd;
+                        if (ctx.extAudioWhisper) {
+                            var eaHint  = hintSec + ctx.extAudioSyncOffset;
+                            var eaMatch = Processing.findTextInWhisper(entry.text, ctx.extAudioWhisper, eaHint, settings);
+                            if (eaMatch.start !== null) {
+                                eaStart = eaMatch.start;
+                                eaEnd   = eaMatch.end;
+                                // Apply padding to ext audio direct match too
+                                if (ctx.padSec > 0) {
+                                    eaStart = Math.max(0, eaStart - ctx.padSec);
+                                    eaEnd   = eaEnd + ctx.padSec;
+                                }
+                                var eaTcIn  = PaperEditParser.secondsToTc(eaStart, ctx.fpsF);
+                                var eaTcOut = PaperEditParser.secondsToTc(eaEnd, ctx.fpsF);
+                                log("info", "  EXT AUDIO direct match: " + eaTcIn + " - " + eaTcOut + "  (" + eaStart.toFixed(2) + "s - " + eaEnd.toFixed(2) + "s)");
+                            }
+                        }
+                        if (eaStart === undefined) {
+                            eaStart = match.start - ctx.extAudioSyncOffset;
+                            eaEnd   = match.end   - ctx.extAudioSyncOffset;
+                        }
 
-                        if (eaPartS.partIndex !== null && eaPartE.partIndex !== null) {
-                            var eaLocalStart    = eaPartS.localTime;
-                            var eaLocalEnd      = eaPartE.localTime;
-                            if (eaPartS.partIndex !== eaPartE.partIndex) eaLocalEnd = ctx.extAudioDurations[eaPartS.partIndex];
-                            var eaInF           = Math.max(0, Math.round(eaLocalStart * ctx.fpsF) - ctx.padFrames);
-                            var eaOutF          = Math.round(eaLocalEnd * ctx.fpsF) + ctx.padFrames;
+                        var eaPartS = Processing.resolvePart(eaStart, ctx.extAudioDurations);
+
+                        if (eaPartS.partIndex !== null) {
+                            var eaInF           = Math.round(eaPartS.localTime * ctx.fpsF);
+                            // Force same frame count as video clip to guarantee matching timeline durations.
+                            var eaOutF          = eaInF + dur;
                             var eaFilePath      = ctx.validExtAudioParts[eaPartS.partIndex];
                             var eaFileId        = "file-extaudio-part" + eaPartS.partIndex;
                             var eaFileDurFrames = Math.round(ctx.extAudioDurations[eaPartS.partIndex] * ctx.fpsF);
+
+                            if (eaOutF > eaFileDurFrames) {
+                                log("warn", "  EXT AUDIO: clip end (" + eaOutF + "f) exceeds file duration (" + eaFileDurFrames + "f) — clamping");
+                                eaOutF = eaFileDurFrames;
+                            }
 
                             placement.extAudioClips.push(XMEMLBuilder.buildExtAudioClipXML(
                                 eaFilePath, eaFileId, 0, dur, eaInF, eaOutF,
@@ -1388,6 +1486,10 @@
                 log("info", "LINK  " + entry.text);
                 ctx.clipPlacements.push({ type: "link", text: entry.text });
 
+            } else if (entry.type === "insound") {
+                log("info", "INSOUND  " + entry.text);
+                ctx.clipPlacements.push({ type: "insound", text: entry.text });
+
             } else if (entry.type === "endcard") {
                 log("info", "END CARD");
                 ctx.clipPlacements.push({ type: "endcard", text: "End Card" });
@@ -1432,7 +1534,16 @@
                 : [];
             var lbMovInEndBlockOnly = lbRevealCount >= 2 && !!ctx.leaderboardMovPath && endLbMissingPre.length === 0;
 
+            // Build sequence name: YYMMDD_FD_Name_QUOTES_Paper Edit
+            var now = new Date();
+            var yy = String(now.getFullYear()).slice(-2);
+            var mm = ("0" + (now.getMonth() + 1)).slice(-2);
+            var dd = ("0" + now.getDate()).slice(-2);
+            var seqGuestName = deriveGuestName(ctx.scriptPath);
+            ctx.sequenceName = yy + mm + dd + "_FD_" + seqGuestName + "_QUOTES_Paper Edit";
+
             var result = XMEMLBuilder.build({
+                sequenceName:                     ctx.sequenceName,
                 entries:                          ctx.entries,
                 numCams:                          ctx.numCams,
                 videoInfo:                        videoInfo,
@@ -1447,6 +1558,7 @@
                 clipPlacements:                   ctx.clipPlacements,
                 endCardNoLogoPath:                endCardNoLogoPath,
                 titleCardPath:                    titleCardPath,
+                hasIntroCard:                     ctx.optNameMogrt,
                 endCard2Path:                     endCard2Path,
                 leaderboardMovPath:               ctx.leaderboardMovPath,
                 leaderboardMovDurationFrames:     ctx.leaderboardMovDurationFrames,
@@ -1512,18 +1624,18 @@
         ctx.heartsJSXPath = null;
         ctx.endLbJSXPath  = null;
 
-        // Name MOGRT
+        // Name MOGRT (AE MOGRT: getMGTComponent → JSON setValue; Premiere EG fallback: Source Text)
         if (ctx.xmemlResult.introData && settings.nameMogrt && fs.existsSync(settings.nameMogrt) && ctx.optNameMogrt) {
+            var guestName = deriveGuestName(ctx.scriptPath);
             var nameMogrtDest = pathMod.join(ctx.projectFolder, pathMod.basename(settings.nameMogrt));
             try {
                 fs.copyFileSync(settings.nameMogrt, nameMogrtDest);
-                var guestName = deriveGuestName(ctx.scriptPath);
-                log("info", "Guest name derived: " + guestName);
+                log("info", "Name MOGRT: guest name = \"" + guestName + "\", copied to " + nameMogrtDest);
                 ctx.nameMogrtJSX = NameMogrt.generateJSX(
                     nameMogrtDest, guestName, ctx.xmemlResult.introData,
                     ctx.xmemlResult.nameMogrtTrackIdx, ctx.fpsF
                 );
-                log("info", "Name MOGRT script generated for track V" + (ctx.xmemlResult.nameMogrtTrackIdx + 1));
+                log("info", "Name MOGRT: JSX generated for track V" + (ctx.xmemlResult.nameMogrtTrackIdx + 1));
             } catch (e) {
                 log("warn", "Name MOGRT generation failed: " + e.message);
             }
@@ -1613,7 +1725,8 @@
             else log("success", "Sequence imported and opened: " + res);
             return new Promise(function (resolve) { setTimeout(resolve, 1500); });
         }).then(function () {
-            return evalHostScript('openSequenceByName("WHISPER_EDIT")');
+            var seqNameEsc = ctx.sequenceName.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+            return evalHostScript('openSequenceByName("' + seqNameEsc + '")');
         }).then(function (res) {
             console.log("[Paper Editor] openSequenceByName result:", res);
         });
@@ -1627,7 +1740,7 @@
             chain = chain.then(function () {
                 log("info", "Running Name MOGRT placement script...");
                 return evalScriptPromise(ctx.nameMogrtJSX).then(function (nRes) {
-                    log("info", "Name MOGRT placement result: " + (nRes && nRes !== "undefined" ? nRes : "done"));
+                    log("info", "Name MOGRT evalScript result: " + (nRes && nRes !== "undefined" ? nRes : "done"));
                 });
             });
         }
@@ -1710,6 +1823,7 @@
             scriptPath:     scriptPath,
             fpsVal:         fpsVal,
             fpsF:           fpsF,
+            padSec:         padSec,
             padFrames:      padFrames,
             gapFrames:      gapFrames,
             optQuoteCards:  document.getElementById("opt-quote-cards").checked,
@@ -1733,8 +1847,9 @@
             nameMogrtJSX: null, heartsJSXPath: null, endLbJSXPath: null
         };
 
+        log("info", "[DBG] runProcessAsync: calling step1...");
         return step1_validateInputs(ctx)
-            .then(function () { return step2_detectPartDurations(ctx); })
+            .then(function () { log("info", "[DBG] step1 resolved, calling step2..."); return step2_detectPartDurations(ctx); })
             .then(function () { return step3_transcribeCameras(ctx); })
             .then(function () { return step4_autoSync(ctx); })
             .then(function () { return step5_parseAndSetupProject(ctx); })
@@ -1808,6 +1923,7 @@
             wireFeatureToggle("opt-leaderboard", "lb-feature-body");
             wireFeatureToggle("opt-ext-audio", "ext-audio-body");
             wireFeatureToggle("opt-hearts", null, ["opt-sparkles"]);
+            wireFeatureToggle("opt-name-mogrt");
 
             // Restore cached inputs (after toggle wiring so dispatched events are handled)
             var didRestoreCache = loadCache();
@@ -1831,8 +1947,7 @@
             var binaries = [
                 ["FFprobe", settings.ffprobeExe],
                 ["FFmpeg", settings.ffmpegExe],
-                ["Whisper", settings.whisperExe],
-                ["Whisper model", settings.whisperModel]
+                ["WhisperX", settings.whisperXExe]
             ];
             binaries.forEach(function (b) {
                 if (b[1] && fs.existsSync(b[1])) {

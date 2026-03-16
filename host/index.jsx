@@ -59,7 +59,7 @@ function importAndOpenXMEML(xmlPath) {
         // Import the XMEML file
         var success = app.project.importFiles(
             [xmlPath],
-            false,                    // suppressUI
+            true,                     // suppressUI — must be true or Premiere shows a dialog that blocks the CEP callback
             app.project.rootItem,     // target bin
             false                     // importAsNumberedStills
         );
@@ -80,14 +80,6 @@ function importAndOpenXMEML(xmlPath) {
                 app.project.openSequence(newSeq.sequenceID);
                 return "success: opened " + newSeq.name;
             }
-        }
-
-        // Fallback: search for WHISPER_EDIT by name
-        var item = findSequenceItem(app.project.rootItem, "WHISPER_EDIT");
-        if (item) {
-            // Open sequence from project item
-            app.project.openSequence(item.nodeId);
-            return "success: opened WHISPER_EDIT via search";
         }
 
         return "success: imported but could not auto-open sequence";

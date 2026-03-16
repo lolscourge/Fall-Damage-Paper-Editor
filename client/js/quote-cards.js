@@ -427,7 +427,7 @@ var QuoteCards = (function () {
                 if (score > bestScore) { bestScore = score; bestClipIdx = ci; }
             }
 
-            if (bestScore >= 0.3 && bestClipIdx >= 0) {
+            if (bestScore >= 0.6 && bestClipIdx >= 0) {
                 var pngFilename = getPngFilename(cardIdx + 1, card.scene);
                 var clipEntry   = clipEntries[bestClipIdx];
                 result[clipEntry._origIdx] = {

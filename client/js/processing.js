@@ -348,7 +348,9 @@ var Processing = (function () {
     function getCachePath(videoPath, model) {
         var mtime = 0;
         try { mtime = fs.statSync(videoPath).mtimeMs; } catch (e) {}
-        var key = videoPath + "_" + mtime + "_" + model;
+        // "_wl1" suffix busts caches from the old segment-level (interpolated) transcription.
+        // New transcriptions use --max-len 1 --split-on-word for word-level timestamps.
+        var key = videoPath + "_" + mtime + "_" + model + "_wl1";
         var hash = crypto.createHash("md5").update(key).digest("hex");
         return pathMod.join(CACHE_DIR, hash + ".json");
     }
@@ -419,6 +421,10 @@ var Processing = (function () {
             return execAsyncWithProgress(pathMod.resolve(whisperBin), [
                 "-m", pathMod.resolve(modelPath),
                 "-oj", "-of", outputBase, "--language", "en",
+                // Word-level timestamps: force one word per segment so each word gets its
+                // own precise timestamp from the model instead of being linearly interpolated
+                // across a multi-word segment. Requires whisper.cpp (any recent build).
+                "--max-len", "1", "--split-on-word",
                 tempWav
             ], 600000, onWhisperStderr).then(function (result) {
                 if (result.status !== 0) {
@@ -448,36 +454,93 @@ var Processing = (function () {
         });
     }
 
-    function transcribeAndMergeParts(whisperBin, modelPath, ffmpegBin, partPaths, partDurations) {
+    /**
+     * Run whisperx_fd.exe on a single video/audio file.
+     * Returns Promise<{ words: [{word, start, end}] }>.
+     */
+    function runWhisperX(exePath, modelName, deviceName, ffmpegBin, videoPath) {
+        var cachePath = getCachePath(videoPath, "wx_" + modelName);
+
+        if (fs.existsSync(cachePath)) {
+            log("info", "Loaded WhisperX transcript from cache: " + pathMod.basename(videoPath));
+            try {
+                return Promise.resolve(JSON.parse(fs.readFileSync(cachePath, "utf8")));
+            } catch (e) {
+                console.warn("Cache read failed, re-transcribing:", e.message);
+            }
+        }
+
+        if (!exePath || !fs.existsSync(exePath)) {
+            return Promise.reject(new Error("WhisperX executable not found: " + exePath + "\nRun build_whisperx_exe.bat to build it."));
+        }
+
+        log("info", "Extracting audio: " + pathMod.basename(videoPath));
+
+        return convertToWav(ffmpegBin, videoPath).then(function (tempWav) {
+            var outputJson = tempWav.replace(/\.wav$/i, "") + "_wx.json";
+            log("info", "Running WhisperX (" + modelName + " / " + (deviceName || "cpu") + "): " + pathMod.basename(videoPath));
+            log("info", "  (First run downloads models ~400MB — subsequent runs use cache)");
+
+            function onWhisperXStderr(line) {
+                if (line.trim()) log("info", "WhisperX: " + line.trim());
+            }
+
+            return execAsyncWithProgress(exePath, [
+                "--audio",  tempWav,
+                "--model",  modelName,
+                "--device", deviceName || "cpu",
+                "--output", outputJson
+            ], 600000, onWhisperXStderr).then(function (result) {
+                if (result.status !== 0) {
+                    throw new Error("WhisperX failed (code " + result.status + "): " + result.stderr.substring(0, 400));
+                }
+                if (!fs.existsSync(outputJson)) {
+                    throw new Error("WhisperX output JSON not found at: " + outputJson);
+                }
+
+                var data = JSON.parse(fs.readFileSync(outputJson, "utf8"));
+
+                try { fs.unlinkSync(tempWav); } catch (e) {}
+                try { fs.unlinkSync(outputJson); } catch (e) {}
+                try { fs.writeFileSync(cachePath, JSON.stringify(data), "utf8"); } catch (e) {}
+
+                log("info", "WhisperX complete: " + pathMod.basename(videoPath) + " — " + (data.words || []).length + " words");
+                return data;
+            }).catch(function (err) {
+                try { fs.unlinkSync(tempWav); } catch (e) {}
+                throw err;
+            });
+        });
+    }
+
+    /**
+     * Transcribe all parts using whisperx_fd.exe and merge into { words: [...] }
+     * with globally-offset timestamps.
+     * opts = { exePath, modelName, deviceName }
+     */
+    function transcribeAndMergeParts(opts, ffmpegBin, partPaths, partDurations) {
         var offsets = getCumulativeOffsets(partDurations);
-        var allSegments = [];
+        var allWords = [];
 
         var chain = Promise.resolve();
         partPaths.forEach(function (pp, idx) {
             chain = chain.then(function () {
-                return runWhisperCpp(whisperBin, modelPath, ffmpegBin, pp).then(function (data) {
+                return runWhisperX(opts.exePath, opts.modelName, opts.deviceName, ffmpegBin, pp).then(function (data) {
                     var offset = offsets[idx];
-                    var segments = data.transcription || data.segments || [];
-
-                    for (var j = 0; j < segments.length; j++) {
-                        var seg = Object.assign({}, segments[j]);
-                        if (seg.timestamps) {
-                            seg.timestamps = {
-                                from: parseTime(seg.timestamps.from) + offset,
-                                to: parseTime(seg.timestamps.to) + offset
-                            };
-                        } else {
-                            seg.from = parseTime(seg.from || 0) + offset;
-                            seg.to = parseTime(seg.to || 0) + offset;
-                        }
-                        allSegments.push(seg);
+                    var words = data.words || [];
+                    for (var j = 0; j < words.length; j++) {
+                        allWords.push({
+                            word:  words[j].word,
+                            start: (words[j].start || 0) + offset,
+                            end:   (words[j].end   || 0) + offset
+                        });
                     }
                 });
             });
         });
 
         return chain.then(function () {
-            return { transcription: allSegments };
+            return { words: allWords };
         });
     }
 
@@ -518,6 +581,18 @@ var Processing = (function () {
     }
 
     function buildWordList(whisperData) {
+        // WhisperX format: { words: [{word, start, end}, ...] } — direct float timestamps, no interpolation needed
+        if (whisperData.words && Array.isArray(whisperData.words)) {
+            return whisperData.words.map(function (w) {
+                return {
+                    word:  (w.word || "").trim().toLowerCase(),
+                    start: typeof w.start === "number" ? w.start : 0,
+                    end:   typeof w.end   === "number" ? w.end   : 0
+                };
+            }).filter(function (w) { return w.word.length > 0; });
+        }
+
+        // Legacy whisper.cpp format: { transcription: [{text, timestamps: {from, to}}, ...] }
         var words = [];
         var segments = whisperData.transcription || whisperData.segments || [];
 
@@ -541,9 +616,9 @@ var Processing = (function () {
 
             for (var j = 0; j < segWords.length; j++) {
                 words.push({
-                    word: segWords[j].trim().toLowerCase(),
-                    start: tFrom + j * perWord,
-                    end: tFrom + (j + 1) * perWord
+                    word:  segWords[j].trim().toLowerCase(),
+                    start: tFrom,
+                    end:   tFrom + (j + 1) * perWord
                 });
             }
         }
@@ -554,44 +629,116 @@ var Processing = (function () {
         var simWeight = (settings && settings.similarityWeight) || 0.7;
         var timeWeight = 1.0 - simWeight;
         var threshold = (settings && settings.matchThreshold) || 0.5;
-        var timeWindow = 30.0;
+        var timeWindow = 15.0;
 
         var words = buildWordList(whisperData);
         var cleanTarget = targetText.toLowerCase().replace(/[^\w\s]/g, "").split(/\s+/).filter(Boolean);
         if (cleanTarget.length === 0) return { start: null, end: null };
 
-        var bestScore = -1;
-        var bestStart = 0;
-        var bestEnd = 0;
         var windowLen = cleanTarget.length;
+        var targetStr = cleanTarget.join(" ");
 
+        // Phase 1: find the best-matching region start using a fixed-size sliding window.
+        // The window size equals the target word count — this locates the right region
+        // even if Whisper inserted or dropped words within the phrase.
+        var bestScore    = -1;
+        var bestStartIdx = -1;
         for (var i = 0; i <= words.length - windowLen; i++) {
             var currentStart = words[i].start;
-            if (Math.abs(currentStart - hintSec) > 300) continue;
+            if (Math.abs(currentStart - hintSec) > 60) continue;
 
             var windowWords = [];
-            for (var k = i; k < i + windowLen; k++) {
-                windowWords.push(words[k].word);
-            }
-            var windowStr = windowWords.join(" ");
-            var targetStr = cleanTarget.join(" ");
+            for (var k = i; k < i + windowLen; k++) windowWords.push(words[k].word);
 
-            var similarity = sequenceMatcherRatio(targetStr, windowStr);
-            var timeDiff = Math.abs(currentStart - hintSec);
-            var timeScore = Math.max(0, 1 - timeDiff / timeWindow);
+            var similarity = sequenceMatcherRatio(targetStr, windowWords.join(" "));
+            var timeDiff   = Math.abs(currentStart - hintSec);
+            var timeScore  = Math.max(0, 1 - timeDiff / timeWindow);
             var totalScore = similarity * simWeight + timeScore * timeWeight;
 
             if (totalScore > bestScore) {
-                bestScore = totalScore;
-                bestStart = words[i].start;
-                bestEnd = words[i + windowLen - 1].end;
+                bestScore    = totalScore;
+                bestStartIdx = i;
             }
         }
 
-        if (bestScore >= threshold) {
-            return { start: bestStart, end: bestEnd };
+        if (bestScore < threshold || bestStartIdx < 0) return { start: null, end: null };
+
+        // Phase 2: anchor the first word.
+        // Search ±2 words around bestStartIdx for the best match to cleanTarget[0].
+        var firstWord       = cleanTarget[0];
+        var firstSearchStart = Math.max(0, bestStartIdx - 2);
+        var firstSearchEnd   = Math.min(words.length - 1, bestStartIdx + 2);
+        var firstWordIdx     = bestStartIdx;
+        var bestFirstSim     = -1;
+        for (var i = firstSearchStart; i <= firstSearchEnd; i++) {
+            var sim = sequenceMatcherRatio(firstWord, words[i].word);
+            if (sim > bestFirstSim) { bestFirstSim = sim; firstWordIdx = i; }
         }
-        return { start: null, end: null };
+
+        // Phase 3: anchor the end of the clip.
+        // Match the last two words of the paper edit as a bigram against consecutive
+        // whisper words. This is far more specific than a single word (e.g. "new japan"
+        // vs just "japan" or "in"). Falls back to single-word match for 2-word targets.
+        var lastWordIdx;
+        if (cleanTarget.length === 1) {
+            lastWordIdx = firstWordIdx;
+        } else {
+            var expectedLastIdx = firstWordIdx + cleanTarget.length - 1;
+            var slack           = Math.max(5, Math.ceil(cleanTarget.length * 0.5));
+            var lastSearchStart = Math.max(firstWordIdx + 1, expectedLastIdx - slack);
+            var lastSearchEnd   = Math.min(words.length - 1, expectedLastIdx + slack);
+            lastWordIdx         = Math.min(expectedLastIdx, words.length - 1);
+            var bestLastSim     = -1;
+            var bestLastDist    = Infinity;
+
+            if (cleanTarget.length >= 3) {
+                // Bigram match: compare last two paper-edit words against consecutive whisper words
+                var lastBigram = cleanTarget[cleanTarget.length - 2] + " " + cleanTarget[cleanTarget.length - 1];
+                for (var i = lastSearchStart; i <= lastSearchEnd; i++) {
+                    var prevWord = (i > 0) ? words[i - 1].word : "";
+                    var bigramCandidate = prevWord + " " + words[i].word;
+                    var sim  = sequenceMatcherRatio(lastBigram, bigramCandidate);
+                    var dist = Math.abs(i - expectedLastIdx);
+                    if (sim > bestLastSim || (sim === bestLastSim && dist < bestLastDist)) {
+                        bestLastSim  = sim;
+                        bestLastDist = dist;
+                        lastWordIdx  = i;
+                    }
+                }
+            } else {
+                // 2-word target: single-word match for the last word
+                var lastWord = cleanTarget[cleanTarget.length - 1];
+                for (var i = lastSearchStart; i <= lastSearchEnd; i++) {
+                    var sim  = sequenceMatcherRatio(lastWord, words[i].word);
+                    var dist = Math.abs(i - expectedLastIdx);
+                    if (sim > bestLastSim || (sim === bestLastSim && dist < bestLastDist)) {
+                        bestLastSim  = sim;
+                        bestLastDist = dist;
+                        lastWordIdx  = i;
+                    }
+                }
+            }
+        }
+
+        var refinedStart = words[firstWordIdx].start;
+        var refinedEnd   = words[lastWordIdx].end;
+
+        log("info", "[match] firstWord='" + words[firstWordIdx].word + "' @" + refinedStart.toFixed(2) + "s  lastWord='" + words[lastWordIdx].word + "' @" + words[lastWordIdx].start.toFixed(2) + "s  lastEnd=" + refinedEnd.toFixed(2) + "s");
+
+        // Sanity check: clip must be long enough for the word count. If Phase 2/3
+        // anchored on the wrong words (common in repetitive phrases like "it's gotta
+        // be X, it's gotta be"), fall back to Phase 1's sliding window boundaries.
+        var minExpected = Math.max(0.15, cleanTarget.length * 0.15);
+        if (refinedEnd - refinedStart < minExpected) {
+            var windowEnd = Math.min(bestStartIdx + windowLen - 1, words.length - 1);
+            var fallbackStart = words[bestStartIdx].start;
+            var fallbackEnd   = words[windowEnd].end;
+            log("info", "[match] Phase 2/3 degenerate (" + (refinedEnd - refinedStart).toFixed(2) + "s < " + minExpected.toFixed(2) + "s) — falling back to Phase 1 window: " + fallbackStart.toFixed(2) + "s - " + fallbackEnd.toFixed(2) + "s");
+            refinedStart = fallbackStart;
+            refinedEnd   = fallbackEnd;
+        }
+
+        return { start: refinedStart, end: refinedEnd };
     }
 
     // ── Sync (Whisper-based fallback) — pure computation ──
@@ -627,23 +774,22 @@ var Processing = (function () {
     }
 
     function autoSyncCamera(refWhisper, secWhisper) {
-        var refSegments = refWhisper.transcription || refWhisper.segments || [];
-        if (refSegments.length < 5) {
-            log("warn", "Too few reference segments for auto-sync");
+        // Build word lists so this works regardless of whether transcription is
+        // word-level (--max-len 1) or segment-level (older caches).
+        var refWords = buildWordList(refWhisper);
+        if (refWords.length < 15) {
+            log("warn", "Too few reference words for auto-sync");
             return null;
         }
 
-        var step = Math.max(1, Math.floor(refSegments.length / 20));
+        var chunkSize = 5; // 5-word phrases for matching
+        var step = Math.max(chunkSize, Math.floor(refWords.length / 20));
         var offsets = [];
 
-        for (var idx = 0; idx < refSegments.length && offsets.length < 20; idx += step) {
-            var seg = refSegments[idx];
-            var text = (seg.text || "").trim();
-            if (text.split(/\s+/).length < 3) continue;
-
-            var refTime = seg.timestamps
-                ? parseTime(seg.timestamps.from)
-                : parseTime(seg.from || 0);
+        for (var idx = 0; idx <= refWords.length - chunkSize && offsets.length < 20; idx += step) {
+            var chunk = refWords.slice(idx, idx + chunkSize);
+            var text = chunk.map(function (w) { return w.word; }).join(" ");
+            var refTime = chunk[0].start;
 
             var match = findTextForSync(text, secWhisper);
             if (match.start !== null) {
@@ -920,6 +1066,7 @@ var Processing = (function () {
         getVideoInfo: getVideoInfo,
         getVideoInfoSync: getVideoInfoSync,
         runWhisperCpp: runWhisperCpp,
+        runWhisperX: runWhisperX,
         transcribeAndMergeParts: transcribeAndMergeParts,
         parseTime: parseTime,
         findTextInWhisper: findTextInWhisper,

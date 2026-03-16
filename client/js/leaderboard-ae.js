@@ -259,6 +259,10 @@ var LeaderboardAE = (function () {
         jsx += '            writeSentinel("ERROR: AEP file not found: " + AEP_PATH);\n';
         jsx += '            return;\n';
         jsx += '        }\n';
+        jsx += '        if (app.project && app.project.dirty) {\n';
+        jsx += '            writeSentinel("ERROR: After Effects has unsaved changes. Please save or close the current project before running the leaderboard render.");\n';
+        jsx += '            return;\n';
+        jsx += '        }\n';
         jsx += '        app.open(aepFile);\n\n';
 
         // Find comps
@@ -402,11 +406,13 @@ var LeaderboardAE = (function () {
         jsx += '        om.applyTemplate(PE_TEMPLATE);\n\n';
 
         jsx += '        om.file = new File(OUTPUT_MOV);\n\n';
-        jsx += '        // Force software rendering to avoid GPU memory limitations\n';
+        jsx += '        // Cache GPU setting, force software for render, then restore\n';
+        jsx += '        var _origGPU = app.project.gpuAccelType;\n';
         jsx += '        app.project.gpuAccelType = GpuAccelType.SOFTWARE;\n\n';
         jsx += '        app.project.renderQueue.render();\n\n';
 
-        // Save again after render
+        // Restore GPU setting before saving so it doesn't persist in the project
+        jsx += '        app.project.gpuAccelType = _origGPU;\n';
         jsx += '        app.project.save();\n\n';
 
         // Step 8: Build LEADERBOARD_GRID comp and export as transparent PNG

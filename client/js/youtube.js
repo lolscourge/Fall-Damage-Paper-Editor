@@ -69,13 +69,13 @@ var YouTubeClips = (function () {
                     }
                     log("info", "Downloading YouTube video: " + vid + "...");
                     updateProgress(54, "Downloading YouTube: " + vid + "...");
-                    return Processing.execAsync(ytDlp, [
+                    return _ytDlpWithRetry(ytDlp, [
                         "-f", "bestvideo[vcodec^=avc1][ext=mp4]+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio[ext=m4a]/mp4/best",
                         "--merge-output-format", "mp4",
                         "-o", info.cachePath,
                         "--no-playlist",
                         info.url
-                    ], 300000).then(function (result) {
+                    ], 300000, vid, 0).then(function (result) {
                         if (result.status !== 0) {
                             log("warn", _ytDlpErrorMessage(vid, result.stderr || ""));
                         } else if (fs.existsSync(info.cachePath)) {
@@ -143,6 +143,31 @@ var YouTubeClips = (function () {
         }
 
         return chain.then(function () { return clipMap; });
+    }
+
+    /**
+     * Run yt-dlp with exponential-backoff retry on HTTP 429 (up to 3 retries).
+     * @param {string} ytDlp   - path to yt-dlp binary
+     * @param {Array}  args    - argument list
+     * @param {number} timeout - process timeout in ms
+     * @param {string} vid     - video ID (for log messages)
+     * @param {number} [attempt=0] - current attempt index (0-based)
+     */
+    function _ytDlpWithRetry(ytDlp, args, timeout, vid, attempt) {
+        attempt = attempt || 0;
+        return Processing.execAsync(ytDlp, args, timeout).then(function (result) {
+            var is429 = result.status !== 0 &&
+                (result.stderr.indexOf("429") >= 0 ||
+                 result.stderr.toLowerCase().indexOf("too many requests") >= 0);
+            if (is429 && attempt < 3) {
+                var delay = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+                log("warn", "yt-dlp: rate limited (429) for " + vid +
+                    " — retry " + (attempt + 1) + "/3 in " + (delay / 1000) + "s");
+                return new Promise(function (resolve) { setTimeout(resolve, delay); })
+                    .then(function () { return _ytDlpWithRetry(ytDlp, args, timeout, vid, attempt + 1); });
+            }
+            return result;
+        });
     }
 
     /** Produce a human-readable error message from yt-dlp stderr. */

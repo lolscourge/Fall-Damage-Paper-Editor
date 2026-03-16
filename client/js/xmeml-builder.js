@@ -121,7 +121,7 @@ var XMEMLBuilder = (function () {
         var xml = '<?xml version="1.0" encoding="UTF-8"?>\n<!DOCTYPE xmeml>\n';
         xml += '<xmeml version="4">\n';
         xml += '<sequence id="sequence-1">\n';
-        xml += tag("name", "WHISPER_EDIT") + "\n";
+        xml += tag("name", opts.sequenceName || "WHISPER_EDIT") + "\n";
         xml += tag("duration", "0") + "\n"; // Will be updated
         xml += rateXML(fpsVal) + "\n";
 
@@ -277,10 +277,11 @@ var XMEMLBuilder = (function () {
 
                 // External audio clips — rebuild with correct currTL
                 if (pl.extAudioClips && pl.extAudioClips.length > 0) {
-                    // The ext audio clips were pre-built with currTL=0,
-                    // so we patch the start/end tags to use the real currTL
+                    // Patch start/end/duration so the clip sits at currTL with exactly
+                    // pl.duration frames — matching the video clip on the same placement.
                     for (var ea = 0; ea < pl.extAudioClips.length; ea++) {
                         var fixedClip = pl.extAudioClips[ea]
+                            .replace(/<duration>\d+<\/duration>/, "<duration>" + pl.duration + "</duration>")
                             .replace(/<start>0<\/start>/, "<start>" + currTL + "</start>")
                             .replace(/<end>(\d+)<\/end>/, "<end>" + (currTL + pl.duration) + "</end>");
                         extAudioTrack1Clips.push(fixedClip);
@@ -289,6 +290,7 @@ var XMEMLBuilder = (function () {
                 if (pl.extAudioClips2 && pl.extAudioClips2.length > 0) {
                     for (var ea = 0; ea < pl.extAudioClips2.length; ea++) {
                         var fixedClip = pl.extAudioClips2[ea]
+                            .replace(/<duration>\d+<\/duration>/, "<duration>" + pl.duration + "</duration>")
                             .replace(/<start>0<\/start>/, "<start>" + currTL + "</start>")
                             .replace(/<end>(\d+)<\/end>/, "<end>" + (currTL + pl.duration) + "</end>");
                         extAudioTrack2Clips.push(fixedClip);
@@ -319,19 +321,22 @@ var XMEMLBuilder = (function () {
                 }
 
                 // Intro stack: END CARD_nologo + QUOTES_Title Card on overlay tracks
+                // Only placed when "Intro card" is ticked in the UI
                 if (pl.isIntro) {
                     introData = { tlStartFrame: currTL, durationFrames: pl.duration };
 
-                    // Only place END CARD_nologo if not already placed by the QC handler above
-                    if (opts.endCardNoLogoPath && !(pl.quoteCard && opts.hasQuoteCards)) {
-                        overlayClipCounter++;
-                        var introECN = buildVideoClipXML(opts.endCardNoLogoPath, currTL, pl.duration, fpsVal, fpsF, overlayClipCounter, fileDefs);
-                        videoTrackTags[bgOverlayIdx].clips.push(introECN);
-                    }
-                    if (opts.titleCardPath) {
-                        overlayClipCounter++;
-                        var introTC = buildVideoClipXML(opts.titleCardPath, currTL, pl.duration, fpsVal, fpsF, overlayClipCounter, fileDefs);
-                        videoTrackTags[titleCardIdx].clips.push(introTC);
+                    if (opts.hasIntroCard) {
+                        // Only place END CARD_nologo if not already placed by the QC handler above
+                        if (opts.endCardNoLogoPath && !(pl.quoteCard && opts.hasQuoteCards)) {
+                            overlayClipCounter++;
+                            var introECN = buildVideoClipXML(opts.endCardNoLogoPath, currTL, pl.duration, fpsVal, fpsF, overlayClipCounter, fileDefs);
+                            videoTrackTags[bgOverlayIdx].clips.push(introECN);
+                        }
+                        if (opts.titleCardPath) {
+                            overlayClipCounter++;
+                            var introTC = buildVideoClipXML(opts.titleCardPath, currTL, pl.duration, fpsVal, fpsF, overlayClipCounter, fileDefs);
+                            videoTrackTags[titleCardIdx].clips.push(introTC);
+                        }
                     }
                 }
 
@@ -428,6 +433,13 @@ var XMEMLBuilder = (function () {
                 }
                 genCounter++;
                 currTL += revealDur;
+
+            } else if (pl.type === "insound") {
+                var textIdx = numCams + overlayTrackOffset + ytTrackOffset + qcTrackOffset;
+                var genXML = buildTextGenerator(pl.text, currTL, opts.gapFrames, fpsVal, genCounter);
+                videoTrackTags[textIdx].clips.push(genXML);
+                genCounter++;
+                currTL += opts.gapFrames;
 
             } else if (pl.type === "link") {
                 var textIdx = numCams + overlayTrackOffset + ytTrackOffset + qcTrackOffset;
@@ -543,13 +555,10 @@ var XMEMLBuilder = (function () {
         var fileName = cam.fileName;
         var fileId = cam.fileId;
         var filePath = cam.filePath;
-        var inF = cam.inFrame;
-        var outF = cam.outFrame;
+        var inFAdj = cam.inFrame;
+        var outFAdj = cam.outFrame;
+        var dur = outFAdj - inFAdj;
         var vidInfo = cam.videoInfo || {};
-
-        var inFAdj = Math.max(0, inF - padFrames);
-        var dur = (outF + padFrames) - inFAdj;
-        var outFAdj = inFAdj + dur;
 
         var videoClip = '<clipitem id="clipitem-' + clipCounter + '">\n';
         videoClip += tag("name", esc(fileName)) + "\n";
