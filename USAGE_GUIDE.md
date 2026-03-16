@@ -6,7 +6,7 @@
 - Download and extract the provided `.zip` file. It contains a `templates/` folder (MOGRT files, overlay videos, PSD template) and a `bin/` folder (WhisperX, FFmpeg, FFprobe executables).
 - Copy the `templates/` and `bin/` folders into the main extension folder (so they sit alongside `client/`, `host/`, etc.).
 - Run `install_dev.bat` as Administrator. This creates a symlink so Premiere can find the extension.
-- Restart Premiere Pro.
+- Restart Premiere Pro (run as Administrator).
 - Go to **Window → Extensions → Paper Editor** to open the panel.
 
 ### 2. Configure Settings
