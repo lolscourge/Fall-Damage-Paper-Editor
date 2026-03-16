@@ -1,4 +1,8 @@
-# Paper Editor — Usage Guide
+# Paper Editor (Fall Damage: Quotes)
+
+A CEP panel for Adobe Premiere Pro that automates the paper edit to timeline workflow for Fall Damage: Quotes. Transcribes footage with WhisperX, matches dialogue from the paper edit, and builds a full sequence with quote cards, leaderboards, hearts, intro cards, and end celebrations.
+
+## Usage Guide
 
 ## Setup (One-Time)
 
