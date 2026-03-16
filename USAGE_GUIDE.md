@@ -1,0 +1,174 @@
+# Paper Editor — Usage Guide
+
+## Setup (One-Time)
+
+### 1. Install the Panel
+- Run `install_dev.bat` as Administrator. This creates a symlink so Premiere can find the extension.
+- Restart Premiere Pro.
+- Go to **Window → Extensions → Paper Editor** to open the panel.
+
+### 2. Configure Settings
+- Click **Settings** (next to "Copy Log" in the LOG section).
+- Set the paths for:
+  - **WhisperX Executable** — `whisperx_fd.exe` (built via `build_whisperx_exe.bat`, or placed in `bin/`)
+  - **FFmpeg / FFprobe** — download from [ffmpeg.org](https://ffmpeg.org/download.html), point to each `.exe`
+  - **WhisperX Model** — `base.en` for speed, `medium.en` for accuracy
+  - **WhisperX Device** — `cpu` (default) or `cuda` if you have an NVIDIA GPU
+- Optional tools (only needed if you use those features):
+  - **Photoshop Executable** — for generating quote card PNGs
+  - **After Effects Executable** — for rendering the leaderboard animation
+  - **yt-dlp Executable** — for downloading YouTube clips
+- Set paths for template assets:
+  - **Hearts MOGRT** — `Hearts_SINGLELINE_V3.mogrt`
+  - **Name MOGRT** — `Name.mogrt` (must be an AE-authored MOGRT)
+  - **Quote Card Template** — `Quote Card Template.psd`
+  - **Title Card / End Cards** — the `.mov` overlay files
+- Click **Done** to save.
+
+> **First run note:** WhisperX will download AI models (~400MB) on its first transcription. This is cached in `%USERPROFILE%\.cache\huggingface\hub\` and only happens once.
+
+---
+
+## Per-Episode Workflow
+
+### Step 1: Sources
+
+**Add your camera footage:**
+- The first camera is the **reference camera** — all other cameras and external audio will be synced to it.
+- Click **+ Add Camera** for each angle. Each camera can have multiple parts (if recording was split into separate files).
+- Click **Browse** next to each part slot to select the video file.
+
+**External audio (optional):**
+- Check **External Audio** if you recorded audio separately (e.g. a dedicated audio recorder).
+- Click **+ Add Audio Part** and browse to each audio file.
+- External audio is synced to the reference camera via WhisperX word matching.
+
+### Step 2: Paper Edit
+
+**Select your paper edit file:**
+- Click **Browse** next to "Paper Edit (.txt)" and select your paper edit text file.
+- The paper edit is a plain text file with timecodes and dialogue. See [format guide](#paper-edit-format) below.
+
+**Set output directory (optional):**
+- By default, the project folder is created next to the paper edit file.
+- To put it somewhere else, browse to a different output directory.
+
+**Adjust settings:**
+- **FPS** — auto-detected from the first camera file, but you can override it.
+- **Padding** — extra seconds added before and after each matched clip (default: 0.5s).
+- **Gap** — length of placeholder gaps for NO MATCH, REVEAL, and LINK entries (default: 5s).
+
+### Step 3: Features
+
+Enable or disable features for this episode:
+
+- **Quote Cards** — Generates styled quote card images and places them on the timeline.
+  - Requires a **Quote Data File** (`.txt`) with quote text and attributions.
+  - Click **Generate Cards in Photoshop** to create the PNGs before generating the project.
+  - **YT Clips** (sub-option) — downloads and trims YouTube clips referenced as URLs in the paper edit.
+
+- **Leaderboard** — Renders an animated leaderboard graphic in After Effects.
+  - Set the **AE Leaderboard Project** (`.aep`), **Guest Name**, **Position**, and **Score %**.
+  - Click **Process Leaderboard in After Effects** to render. This can also run automatically during generation.
+
+- **Hearts** — Places heart MOGRTs at scoring reveal points on the timeline.
+
+- **Sparkles** — Adds sparkle effects on newly revealed hearts. Only available when Hearts is enabled.
+
+- **Intro Card** — Places the guest name MOGRT and intro card overlays on the intro clip.
+
+### Step 4: Generate
+
+- Click **Generate Project**.
+- The panel runs through these stages automatically:
+  1. Validates all inputs and paths
+  2. Detects durations of all footage parts
+  3. Transcribes each camera with WhisperX
+  4. Syncs multi-cam and external audio via word matching
+  5. Parses the paper edit and matches lines to transcription
+  6. Processes leaderboard in After Effects (if enabled)
+  7. Builds the XMEML sequence
+  8. Generates JSX scripts for MOGRTs and overlays
+  9. Imports the sequence into Premiere and opens it
+  10. Runs JSX scripts to place Name MOGRT, Hearts, and end leaderboard
+
+- Watch the **progress bar** and **log** for status updates.
+- Click **Cancel** at any time to stop after the current step completes.
+
+### Step 5: After Generation
+
+Once generation completes:
+- The sequence opens in Premiere's timeline, named `YYMMDD_FD_GuestName_QUOTES_Paper Edit`.
+- Project items are automatically organized into bins: FOOTAGE, CLIPS, QUOTE CARDS, SEQUENCES, GFX.
+- Review the timeline — NO MATCH entries appear as gaps that you need to manually fill.
+- REVEAL entries appear as gaps where you can add your reveal graphics.
+- LINK entries appear as gaps where YouTube clips (if downloaded) are placed.
+
+---
+
+## Paper Edit Format
+
+The paper edit is a plain `.txt` file. Each entry is a timecode line followed by dialogue text:
+
+```
+1:23
+So the first question is about wrestling
+
+3:45
+Kenny talks about his career in New Japan
+
+Reveal - Kenny Omega 0.5
+
+5:12
+Next question about favourite matches
+
+Leaderboard reveal
+
+7:30
+Final thoughts on the industry
+
+https://www.youtube.com/watch?v=example
+
+End card
+```
+
+### Line Types
+
+| Line | What it does |
+|------|-------------|
+| `1:23` or `0:01:23` or `0:01:23:12` | Timecode — marks the start of a dialogue clip |
+| Text after timecode | Dialogue — matched against the transcription to find the clip |
+| `Reveal - <text>` | Scoring reveal — creates a gap; Hearts MOGRT placed here if enabled |
+| `Leaderboard reveal` | Leaderboard-specific reveal |
+| `End card` | End card placeholder — end card overlays placed here |
+| URL (http/https) | Link — YouTube clip downloaded and placed here (if YT Clips enabled) |
+
+### Tips for Good Matches
+
+- Use distinctive phrases, not single common words.
+- Include 3-5 words minimum per dialogue line for reliable matching.
+- Timecodes don't need to be exact — the panel uses them for proximity weighting alongside text similarity.
+- If a clip doesn't match, it appears as a "NO MATCH" gap in the timeline. You can adjust the **Match Threshold** in Settings (lower = more permissive matching).
+
+---
+
+## Troubleshooting
+
+| Problem | Solution |
+|---------|----------|
+| Panel doesn't appear in Window → Extensions | Run `install_dev.bat` as Admin, restart Premiere |
+| "EvalScript error" on every action | Check that `CSXS/manifest.xml` has no `<ScriptPath>` element |
+| WhisperX first run hangs | It's downloading models (~400MB). Wait for it to finish. |
+| "Processing is not defined" | A JS file has a syntax error. Check the Chrome DevTools console (localhost:8088) |
+| Quote cards not generating | Ensure Photoshop path is set in Settings and Photoshop is installed |
+| Leaderboard render fails | Ensure After Effects path is set and the `.aep` file is valid |
+| Name MOGRT text doesn't change | The MOGRT must be authored in After Effects, not Premiere's Essential Graphics |
+| Timeline has gaps everywhere | These are NO MATCH entries. Adjust Match Threshold or improve paper edit phrasing |
+
+---
+
+## Keyboard Shortcuts / Tips
+
+- **Copy Log** — Click to copy the full log to clipboard for sharing or debugging.
+- **Settings → Export/Import** — Save and load your configuration as JSON.
+- **Settings → Clear Session Cache** — Resets all cameras, paths, and toggles to defaults.
