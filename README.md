@@ -53,7 +53,7 @@ A CEP panel for Adobe Premiere Pro that automates the paper edit to timeline wor
 **Prepare your paper edit file:**
 - Open the paper edit document on Google Drive / Asana.
 - Select all the content and copy it.
-- Open a plain text editor (e.g. Notepad), paste the content, and save it as a `.txt` file.
+- Open a plain text editor (e.g. Notepad), paste the content, and save it as `NAME_Paper Edit.txt` file. IMPORTANT: Name is parsed from here.
 - In the panel, click **Browse** next to "Paper Edit (.txt)" and select that file.
 - See [format guide](#paper-edit-format) below for what the panel expects.
 
@@ -71,7 +71,7 @@ A CEP panel for Adobe Premiere Pro that automates the paper edit to timeline wor
 Enable or disable features for this episode:
 
 - **Quote Cards** — Generates styled quote card images and places them on the timeline.
-  - Requires a **Quote Data File** (`.txt`). To create this, open the quotes table in the Google Drive / Asana document, copy the table contents, paste into a plain text file, and save as `.txt`.
+  - Requires a **Quote Data File** (`.txt`). To create this, open the quotes table in the Google Drive / Asana document, copy the table contents, paste into a plain text file, and save as `NAME_Quote Data.txt`.
   - Click **Generate Cards in Photoshop** to create the PNGs before generating the project (optional — can be done separately).
   - **YT Clips** (sub-option) — downloads and trims YouTube clips referenced as URLs in the paper edit.
 
