@@ -17,20 +17,16 @@ A CEP panel for Adobe Premiere Pro that automates the paper edit to timeline wor
 
 ### 2. Configure Settings
 - Click **Settings** (next to "Copy Log" in the LOG section).
-- Set the paths for:
-  - **WhisperX Executable** — `whisperx_fd.exe` (built via `build_whisperx_exe.bat`, or placed in `bin/`)
-  - **FFmpeg / FFprobe** — download from [ffmpeg.org](https://ffmpeg.org/download.html), point to each `.exe`
+- If you placed the `bin/` and `templates/` folders from the zip, all paths should be set automatically. Verify they look correct:
+  - **WhisperX Executable** — `whisperx_fd.exe`
+  - **FFmpeg / FFprobe** — `ffmpeg.exe`, `ffprobe.exe`
   - **WhisperX Model** — `base.en` for speed, `medium.en` for accuracy
   - **WhisperX Device** — `cpu` (default) or `cuda` if you have an NVIDIA GPU
+  - **Hearts MOGRT**, **Name MOGRT**, **Quote Card Template**, **Title Card / End Cards** — template assets
 - Optional tools (only needed if you use those features):
   - **Photoshop Executable** — for generating quote card PNGs
   - **After Effects Executable** — for rendering the leaderboard animation
   - **yt-dlp Executable** — for downloading YouTube clips
-- Set paths for template assets:
-  - **Hearts MOGRT** — `Hearts_SINGLELINE_V3.mogrt`
-  - **Name MOGRT** — `Name.mogrt` (must be an AE-authored MOGRT)
-  - **Quote Card Template** — `Quote Card Template.psd`
-  - **Title Card / End Cards** — the `.mov` overlay files
 - Click **Done** to save.
 
 > **First run note:** WhisperX will download AI models (~400MB) on its first transcription. This is cached in `%USERPROFILE%\.cache\huggingface\hub\` and only happens once.
