@@ -3,6 +3,8 @@
 ## Setup (One-Time)
 
 ### 1. Install the Panel
+- Download and extract the provided `.zip` file. It contains a `templates/` folder (MOGRT files, overlay videos, PSD template) and a `bin/` folder (WhisperX, FFmpeg, FFprobe executables).
+- Copy the `templates/` and `bin/` folders into the main extension folder (so they sit alongside `client/`, `host/`, etc.).
 - Run `install_dev.bat` as Administrator. This creates a symlink so Premiere can find the extension.
 - Restart Premiere Pro.
 - Go to **Window → Extensions → Paper Editor** to open the panel.
@@ -67,7 +69,7 @@ Enable or disable features for this episode:
 
 - **Quote Cards** — Generates styled quote card images and places them on the timeline.
   - Requires a **Quote Data File** (`.txt`). To create this, open the quotes table in the Google Drive / Asana document, copy the table contents, paste into a plain text file, and save as `.txt`.
-  - Click **Generate Cards in Photoshop** to create the PNGs before generating the project.
+  - Click **Generate Cards in Photoshop** to create the PNGs before generating the project (optional — can be done separately).
   - **YT Clips** (sub-option) — downloads and trims YouTube clips referenced as URLs in the paper edit.
 
 - **Leaderboard** — Renders an animated leaderboard graphic in After Effects.
@@ -143,7 +145,8 @@ End card
 | Text after timecode | Dialogue — matched against the transcription to find the clip |
 | `Reveal - <text>` | Scoring reveal — creates a gap; Hearts MOGRT placed here if enabled |
 | `Leaderboard reveal` | Leaderboard-specific reveal |
-| `End card` | End card placeholder — end card overlays placed here |
+| `Insound <text>` | In-sound cue — creates a labelled gap on the timeline |
+| `End card` | End card placeholder |
 | URL (http/https) | Link — YouTube clip downloaded and placed here (if YT Clips enabled) |
 
 ### Tips for Good Matches
@@ -152,6 +155,46 @@ End card
 - Include 3-5 words minimum per dialogue line for reliable matching.
 - Timecodes don't need to be exact — the panel uses them for proximity weighting alongside text similarity.
 - If a clip doesn't match, it appears as a "NO MATCH" gap in the timeline. You can adjust the **Match Threshold** in Settings (lower = more permissive matching).
+
+---
+
+## Timeline Layout
+
+Here's how each element gets placed on the generated timeline:
+
+### Video Tracks (bottom to top)
+
+| Track | Content |
+|-------|---------|
+| V1 | Background overlay — END CARD nologo `.mov` placed under quote cards and intro clip |
+| V2 | Title card — `QUOTES_Title Card.mov` placed on the intro clip |
+| V3–V(n) | Camera footage — one track per camera (V3 = reference camera, V4 = CAM B, etc.) |
+| V(n+1) | YouTube clips — trimmed YT clips placed at reveal points (if YT Clips enabled) |
+| V(n+2) | Quote cards — quote card PNGs overlaid on their corresponding dialogue clips |
+| V(n+3) | Text generators — labels for NO MATCH, REVEAL, INSOUND, LINK, and END CARD gaps |
+| V(n+4) | Leaderboard `.mov` — rendered leaderboard animation at reveal points |
+| V(top) | Name MOGRT — guest name placed on the intro clip via JSX |
+
+### What goes where
+
+- **Matched dialogue clips** — Camera footage placed on V3+ at the matched timecode, trimmed with padding.
+- **NO MATCH** — A text generator gap (default 5s) with the unmatched dialogue text as a label. Fill these manually.
+- **Quote cards** — PNG overlaid on the quote card track above the dialogue clip it belongs to, with END CARD nologo underneath as a background.
+- **Intro card** — On the first clip: END CARD nologo (V1) + Title Card (V2) stacked underneath, Name MOGRT placed on top via JSX with the guest's name.
+- **Reveals** — A gap with text label. If Hearts is enabled, heart MOGRTs are placed at each reveal via JSX. If a YouTube clip is associated, it's placed on the YT track. If the leaderboard is enabled, the leaderboard `.mov` is placed on its track.
+- **INSOUND** — A labelled gap on the timeline. Fill with the appropriate sound effect manually.
+- **LINK** — A labelled gap. If YT Clips is enabled, the downloaded/trimmed clip is placed on the YT track.
+- **End card** — A gap with END CARD 2 `.mov` placed on the background overlay track. If the end leaderboard is enabled (2+ leaderboard reveals + all template files present), a celebration block is appended with confetti, fireworks, music, and sound effects.
+- **Hearts** — Heart MOGRTs placed at each scoring reveal point via JSX after import. Each heart corresponds to the score value in the reveal line (e.g. `Reveal - Name 0.5` = half heart).
+- **Sparkles** — Sparkle `.mov` effects placed on newly revealed hearts.
+
+### Audio Tracks
+
+| Track | Content |
+|-------|---------|
+| A1–A(n) | Camera audio — one track per camera |
+| A(n+1)–A(n+2) | External audio (if enabled) — stereo pair synced to reference camera |
+| A(bottom) | End leaderboard audio — music, whooshes, drum roll, party horn (if end block enabled) |
 
 ---
 
