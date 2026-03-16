@@ -1,14 +1,15 @@
 # Paper Editor (Fall Damage: Quotes)
 
-A CEP panel for Adobe Premiere Pro that automates the paper edit to timeline workflow for Fall Damage: Quotes. Transcribes footage with WhisperX, matches dialogue from the paper edit, and builds a full sequence with quote cards, leaderboards, hearts, intro cards, and end celebrations.
+A CEP panel for Adobe Premiere Pro that automates the paper edit to timeline workflow for Fall Damage: Quotes. Transcribes footage with WhisperX, matches dialogue from the paper edit, and builds a full sequence with quote cards, leaderboards, hearts, intro cards, and end celebrations. Windows Only.
 
-> **[Download templates + bin (.zip)](https://YOUR_LINK_HERE)** — Required files (MOGRTs, overlays, WhisperX, FFmpeg). Extract and copy `templates/` and `bin/` into the extension folder before installing.
+> **[Download templates + bin (.zip)](https://drive.google.com/file/d/1YszHtpkTxwsleWeCjRL4N_cZ__HjHxmZ/view?usp=drive_link)** — Required files (MOGRTs, overlays, WhisperX, FFmpeg). Extract and copy `templates/` and `bin/` into the extension folder before installing.
 
 ## Usage Guide
 
 ## Setup (One-Time)
 
 ### 1. Install the Panel
+- Download the extension (top right -> code -> download .zip) and extract to your Documents folder.
 - Download and extract the provided `.zip` file. It contains a `templates/` folder (MOGRT files, overlay videos, PSD template) and a `bin/` folder (WhisperX, FFmpeg, FFprobe executables).
 - Copy the `templates/` and `bin/` folders into the main extension folder (so they sit alongside `client/`, `host/`, etc.).
 - Run `install_dev.bat` as Administrator. This creates a symlink so Premiere can find the extension.
