@@ -166,14 +166,18 @@ Here's how each element gets placed on the generated timeline:
 
 | Track | Content |
 |-------|---------|
-| V1 | Background overlay — END CARD nologo `.mov` placed under quote cards and intro clip |
-| V2 | Title card — `QUOTES_Title Card.mov` placed on the intro clip |
-| V3–V(n) | Camera footage — one track per camera (V3 = reference camera, V4 = CAM B, etc.) |
-| V(n+1) | YouTube clips — trimmed YT clips placed at reveal points (if YT Clips enabled) |
-| V(n+2) | Quote cards — quote card PNGs overlaid on their corresponding dialogue clips |
-| V(n+3) | Text generators — labels for NO MATCH, REVEAL, INSOUND, LINK, and END CARD gaps |
-| V(n+4) | Leaderboard `.mov` — rendered leaderboard animation at reveal points |
-| V(top) | Name MOGRT — guest name placed on the intro clip via JSX |
+| V1–V(n) | Camera footage — one track per camera (V1 = reference camera, V2 = CAM B, etc.) |
+| V(n+1) | Background overlay — END CARD nologo `.mov` placed under quote cards and intro clip; END CARD 2 at end |
+| V(n+2) | Title card — `QUOTES_Title Card.mov` placed on the intro clip |
+| V(n+3) | Name MOGRT — guest name placed on the intro clip via JSX |
+| V(n+4)* | Leaderboard — rendered leaderboard `.mov` at reveal points (if leaderboard enabled) |
+| V(n+5)* | YouTube clips — trimmed YT clips at reveal points (if YT Clips enabled) |
+| V(n+6)* | Quote cards — quote card PNGs overlaid on their corresponding dialogue clips |
+| V(top-2) | Text generators — labels for NO MATCH, REVEAL, INSOUND, LINK, and END CARD gaps |
+| V(top-1), V(top) | Hearts MOGRTs — top/bottom heart tracks (if Hearts enabled) |
+| V(top+1) | Sparkles — sparkle effects on hearts (if Sparkles enabled) |
+
+*Conditional tracks — only added if the feature is enabled. Track numbers shift accordingly.
 
 ### What goes where
 
