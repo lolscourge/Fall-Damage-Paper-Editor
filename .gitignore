@@ -13,7 +13,12 @@ templates/Adobe Premiere Pro Auto-Save/
 
 # Runtime / generated
 cache.json
+settings.json
 .debug
+
+# Build scripts
+_whisperx_transcribe.py
+build_whisperx_exe.bat
 
 # Local IDE config
 .claude/
