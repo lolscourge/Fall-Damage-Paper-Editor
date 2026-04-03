@@ -345,7 +345,7 @@ var Hearts = (function () {
             jsx += '        // Find the clip we just placed and configure position/scale\n';
             jsx += '        var clip = null;\n';
             jsx += '        for (var i = track.clips.numItems - 1; i >= 0; i--) {\n';
-            jsx += '            if (Math.abs(Number(track.clips[i].start.ticks) - Number(tickStr)) <= 1) {\n';
+            jsx += '            if (track.clips[i].start.ticks === tickStr) {\n';
             jsx += '                clip = track.clips[i];\n';
             jsx += '                break;\n';
             jsx += '            }\n';
@@ -362,17 +362,19 @@ var Hearts = (function () {
             jsx += '}\n\n';
         }
 
-        jsx += 'var __heartsResult = (function() {\n';
+        jsx += '(function() {\n';
         jsx += '    try {\n';
         jsx += '        var seq = app.project.activeSequence;\n';
         jsx += '        if (!seq) {\n';
         jsx += '            logMsg("FATAL: No active sequence found. Aborting.");\n';
-        jsx += '            return "ERROR: no active sequence";\n';
+        jsx += '            alert("No active sequence found. Click into your timeline and run again.");\n';
+        jsx += '            return;\n';
         jsx += '        }\n\n';
         jsx += '        var f = new File(MOGRT_PATH);\n';
         jsx += '        if (!f.exists) {\n';
         jsx += '            logMsg("FATAL: MOGRT file not found at " + MOGRT_PATH);\n';
-        jsx += '            return "ERROR: MOGRT not found";\n';
+        jsx += '            alert("MOGRT file not found. Check the log.");\n';
+        jsx += '            return;\n';
         jsx += '        }\n\n';
         jsx += '        logMsg("Sequence found. Beginning placement of ' + (numReveals * 2) + ' MOGRTs...");\n\n';
         if (hasSparkles) {
@@ -382,16 +384,15 @@ var Hearts = (function () {
         jsx += '        logMsg("=== SCRIPT FINISHED ===");\n';
         jsx += '        logMsg("Placed: " + placed + " MOGRTs.");\n';
         jsx += '        logMsg("Errors: " + errors.length);\n\n';
-        jsx += '        var summary = "DONE:" + placed + " MOGRTs placed";\n';
-        jsx += '        if (errors.length > 0) { summary += ", " + errors.length + " error(s)"; }\n';
-        jsx += '        logMsg(summary);\n';
-        jsx += '        return summary;\n';
+        jsx += '        if (errors.length > 0) {\n';
+        jsx += '            alert("Hearts script finished with " + errors.length + " errors. Check the _log.txt file next to your MOGRT.");\n';
+        jsx += '        } else {\n';
+        jsx += '            alert("Hearts script done! Placed " + placed + " MOGRTs.");\n';
+        jsx += '        }\n';
         jsx += '    } catch(e) {\n';
         jsx += '        logMsg("UNHANDLED EXCEPTION: " + e.message);\n';
-        jsx += '        return "ERROR: " + e.message;\n';
         jsx += '    }\n';
         jsx += '})();\n';
-        jsx += '__heartsResult;\n';
 
         return jsx;
     }

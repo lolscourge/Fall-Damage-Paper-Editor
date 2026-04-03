@@ -206,10 +206,19 @@ var XMEMLBuilder = (function () {
             videoTrackTags.push({ tag: "track", id: "qcards", clips: [] });
         }
 
-        // Track index helpers (account for overlay + optional YT and QC tracks)
+        // Comments track (above QC, below text — MOGRT placed via importMGT post-import)
+        var hasComments = !!opts.hasComments;
+        var commentsTrackIdx = -1;
+        if (hasComments) {
+            commentsTrackIdx = videoTrackTags.length;
+            videoTrackTags.push({ tag: "track", id: "comments", clips: [] });
+        }
+
+        // Track index helpers (account for overlay + optional YT, QC, and comments tracks)
         var ytTrackOffset = hasYT ? 1 : 0;
         var qcTrackOffset = opts.hasQuoteCards ? 1 : 0;
-        // textIdx = numCams + overlayTrackOffset + ytTrackOffset + qcTrackOffset
+        var commentsTrackOffset = hasComments ? 1 : 0;
+        // textIdx = numCams + overlayTrackOffset + ytTrackOffset + qcTrackOffset + commentsTrackOffset
 
         // Text track
         videoTrackTags.push({
@@ -260,6 +269,9 @@ var XMEMLBuilder = (function () {
             var pl = placements[p];
 
             if (pl.type === "clip" && pl.matched) {
+                // Store timeline position for downstream use (e.g. comments MOGRT placement)
+                pl.tlStartFrame = currTL;
+
                 // Place clips for each camera — build video + audio with correct currTL
                 for (var ci = 0; ci < pl.cameras.length; ci++) {
                     var cam = pl.cameras[ci];
@@ -344,7 +356,7 @@ var XMEMLBuilder = (function () {
 
             } else if (pl.type === "clip" && !pl.matched) {
                 // No match — text generator
-                var textIdx = numCams + overlayTrackOffset + ytTrackOffset + qcTrackOffset;
+                var textIdx = numCams + overlayTrackOffset + ytTrackOffset + qcTrackOffset + commentsTrackOffset;
                 var genXML = buildTextGenerator(pl.displayText, currTL, opts.gapFrames, fpsVal, genCounter);
                 videoTrackTags[textIdx].clips.push(genXML);
                 genCounter++;
@@ -425,7 +437,7 @@ var XMEMLBuilder = (function () {
                 // Reveal text generator — use longest overlay duration, else gapFrames
                 var revealDur = Math.max(thisRevealYTDur, thisRevealLBDur);
                 if (revealDur === 0) revealDur = opts.gapFrames;
-                var textIdx = numCams + overlayTrackOffset + ytTrackOffset + qcTrackOffset;
+                var textIdx = numCams + overlayTrackOffset + ytTrackOffset + qcTrackOffset + commentsTrackOffset;
                 var genXML = buildTextGenerator(pl.text, currTL, revealDur, fpsVal, genCounter);
                 videoTrackTags[textIdx].clips.push(genXML);
                 if (pl.score !== null && pl.score !== undefined) {
@@ -435,21 +447,21 @@ var XMEMLBuilder = (function () {
                 currTL += revealDur;
 
             } else if (pl.type === "insound") {
-                var textIdx = numCams + overlayTrackOffset + ytTrackOffset + qcTrackOffset;
+                var textIdx = numCams + overlayTrackOffset + ytTrackOffset + qcTrackOffset + commentsTrackOffset;
                 var genXML = buildTextGenerator(pl.text, currTL, opts.gapFrames, fpsVal, genCounter);
                 videoTrackTags[textIdx].clips.push(genXML);
                 genCounter++;
                 currTL += opts.gapFrames;
 
             } else if (pl.type === "link") {
-                var textIdx = numCams + overlayTrackOffset + ytTrackOffset + qcTrackOffset;
+                var textIdx = numCams + overlayTrackOffset + ytTrackOffset + qcTrackOffset + commentsTrackOffset;
                 var genXML = buildTextGenerator("LINK: " + pl.text, currTL, opts.gapFrames, fpsVal, genCounter);
                 videoTrackTags[textIdx].clips.push(genXML);
                 genCounter++;
                 currTL += opts.gapFrames;
 
             } else if (pl.type === "endcard") {
-                var textIdx = numCams + overlayTrackOffset + ytTrackOffset + qcTrackOffset;
+                var textIdx = numCams + overlayTrackOffset + ytTrackOffset + qcTrackOffset + commentsTrackOffset;
                 var endcardDur = opts.gapFrames;
                 var genXML = buildTextGenerator("END CARD", currTL, endcardDur, fpsVal, genCounter);
                 videoTrackTags[textIdx].clips.push(genXML);
@@ -545,6 +557,7 @@ var XMEMLBuilder = (function () {
             heartsTopTrackIdx: heartsTopIdx,
             heartsBotTrackIdx: heartsBotIdx,
             sparklesTrackIdx: sparklesIdx,
+            commentsTrackIdx: commentsTrackIdx,
             endLbRevealFrame: endLbRevealFrame
         };
     }

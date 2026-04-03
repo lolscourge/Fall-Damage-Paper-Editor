@@ -13,19 +13,9 @@ var AERunner = (function () {
     var pathMod      = require("path");
     var childProcess = require("child_process");
 
-    var IS_WIN = process.platform === "win32";
-
     // ── AE detection ──
 
     function isAERunning() {
-        if (!IS_WIN) {
-            // M2: macOS — use pgrep
-            return new Promise(function (resolve) {
-                childProcess.exec('pgrep -xi "After Effects"', { timeout: 5000 }, function (err) {
-                    resolve(!err); // pgrep exits 0 if found
-                });
-            });
-        }
         return new Promise(function (resolve) {
             childProcess.exec(
                 'tasklist /FI "IMAGENAME eq AfterFX.exe" /FO CSV /NH',
@@ -58,40 +48,10 @@ var AERunner = (function () {
     }
 
     /**
-     * Send a JSX script to a running AE instance.
-     * Mac: uses osascript AppleScript bridge (tries recent AE versions).
-     * Win: uses VBScript COM bridge (GetObject + DoScriptFile).
+     * Send a JSX script to a running AE instance via VBScript COM bridge.
+     * Uses GetObject to attach to the running process and DoScriptFile to execute.
      */
     function sendScriptToRunningAE(jsxPath) {
-        if (!IS_WIN) {
-            return new Promise(function (resolve, reject) {
-                // Try recent AE app names; osascript will fail fast on wrong name
-                var posixPath = jsxPath.replace(/\\/g, "/").replace(/"/g, '\\"');
-                var years = ["2026", "2025", "2024", "2023"];
-                function tryYear(i) {
-                    if (i >= years.length) {
-                        return reject(new Error("Could not reach After Effects via AppleScript (tried 2023-2026)"));
-                    }
-                    var appName = "Adobe After Effects " + years[i];
-                    var script = 'tell application "' + appName + '" to DoScript POSIX file "' + posixPath + '"';
-                    childProcess.exec('osascript -e \'' + script.replace(/'/g, "'\\''") + '\'',
-                        { timeout: 30000 },
-                        function (err, stdout, stderr) {
-                            if (!err) {
-                                resolve();
-                            } else if (stderr && stderr.indexOf("(-1728)") >= 0) {
-                                // App not found by that name — try next year
-                                tryYear(i + 1);
-                            } else {
-                                reject(new Error(stderr || (err && err.message) || "osascript bridge failed"));
-                            }
-                        }
-                    );
-                }
-                tryYear(0);
-            });
-        }
-
         return new Promise(function (resolve, reject) {
             var winPath = jsxPath.replace(/\//g, "\\").replace(/"/g, '""');
             var vbs =
@@ -156,52 +116,23 @@ var AERunner = (function () {
     // ── Auto-detect After Effects installation ──
 
     function findAfterEffectsExe() {
+        var searchDirs = [
+            "C:\\Program Files\\Adobe",
+            "C:\\Program Files (x86)\\Adobe"
+        ];
         var candidates = [];
-
-        if (!IS_WIN) {
-            // Mac: search /Applications/Adobe for "After Effects" .app bundles
-            var macDir = "/Applications/Adobe";
+        for (var si = 0; si < searchDirs.length; si++) {
             try {
-                if (fs.existsSync(macDir)) {
-                    var entries = fs.readdirSync(macDir);
-                    for (var ei = 0; ei < entries.length; ei++) {
-                        var name = entries[ei];
-                        if (name.toLowerCase().indexOf("after effects") === -1) continue;
-                        // Binary sits inside the .app bundle
-                        var appDir = pathMod.join(macDir, name);
-                        // Try both naming conventions
-                        var candidates2 = [
-                            pathMod.join(appDir, name + ".app", "Contents", "MacOS", "After Effects"),
-                            pathMod.join(appDir, name.replace(/\.app$/, "") + ".app", "Contents", "MacOS", "After Effects")
-                        ];
-                        for (var ci = 0; ci < candidates2.length; ci++) {
-                            if (fs.existsSync(candidates2[ci])) {
-                                candidates.push({ path: candidates2[ci], name: name });
-                                break;
-                            }
-                        }
-                    }
+                if (!fs.existsSync(searchDirs[si])) continue;
+                var entries = fs.readdirSync(searchDirs[si]);
+                for (var ei = 0; ei < entries.length; ei++) {
+                    var name = entries[ei];
+                    if (name.toLowerCase().indexOf("after effects") === -1) continue;
+                    var exe = pathMod.join(searchDirs[si], name, "Support Files", "afterfx.exe");
+                    if (fs.existsSync(exe)) candidates.push({ path: exe, name: name });
                 }
             } catch (e) {}
-        } else {
-            var searchDirs = [
-                "C:\\Program Files\\Adobe",
-                "C:\\Program Files (x86)\\Adobe"
-            ];
-            for (var si = 0; si < searchDirs.length; si++) {
-                try {
-                    if (!fs.existsSync(searchDirs[si])) continue;
-                    var dirEntries = fs.readdirSync(searchDirs[si]);
-                    for (var di = 0; di < dirEntries.length; di++) {
-                        var dname = dirEntries[di];
-                        if (dname.toLowerCase().indexOf("after effects") === -1) continue;
-                        var exe = pathMod.join(searchDirs[si], dname, "Support Files", "afterfx.exe");
-                        if (fs.existsSync(exe)) candidates.push({ path: exe, name: dname });
-                    }
-                } catch (e) {}
-            }
         }
-
         if (candidates.length === 0) return "";
         candidates.sort(function (a, b) {
             var yearA = (a.name.match(/(\d{4})/) || [0, 0])[1];
@@ -306,7 +237,7 @@ var AERunner = (function () {
                     elapsed += 3;
                     updateProgress(56 + Math.min(Math.floor(elapsed / 60), 10),
                         "Leaderboard: exporting in AE... (" + elapsed + "s)");
-                    if (elapsed % 10 === 0 || elapsed === 3) {
+                    if (elapsed % 30 === 0 || elapsed === 3) {
                         log("info", "Leaderboard: exporting in AE... (" + elapsed + "s)");
                     }
 

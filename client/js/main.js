@@ -170,6 +170,8 @@
         titleCardMov: pathMod.join(extensionDir, "templates", "QUOTES_Title Card.mov"),
         endCardNoLogoMov: pathMod.join(extensionDir, "templates", "16-9 fall damage END CARD_nologo.mov"),
         endCard2Mov: pathMod.join(extensionDir, "templates", "16-9 fall damage END CARD 2.mov"),
+        commentMogrt1Line: pathMod.join(extensionDir, "templates", "YouTubeComment.mogrt"),
+        commentMogrt2Line: pathMod.join(extensionDir, "templates", "YouTube Comment 2 Line.mogrt"),
         matchThreshold: 0.5,
         similarityWeight: 0.7
     };
@@ -344,6 +346,8 @@
                 optQuoteCards: document.getElementById("opt-quote-cards").checked,
                 optYtClips: document.getElementById("opt-yt-clips").checked,
                 optLeaderboard: document.getElementById("opt-leaderboard").checked,
+                optComments: document.getElementById("opt-comments").checked,
+                commentsDataFile: document.getElementById("comments-data-file").value,
                 optHearts: document.getElementById("opt-hearts").checked,
                 optSparkles: document.getElementById("opt-sparkles").checked,
                 optNameMogrt: document.getElementById("opt-name-mogrt").checked
@@ -371,11 +375,12 @@
             document.getElementById("lb-guest-name").value = "";
             document.getElementById("lb-position").value = "";
             document.getElementById("lb-score").value = "";
+            document.getElementById("comments-data-file").value = "";
             // Reset checkboxes to their HTML defaults and fire change events
             var checkDefaults = [
                 ["opt-hearts", true], ["opt-sparkles", true], ["opt-name-mogrt", true],
                 ["opt-quote-cards", true], ["opt-yt-clips", true],
-                ["opt-leaderboard", true], ["opt-ext-audio", false]
+                ["opt-leaderboard", true], ["opt-comments", false], ["opt-ext-audio", false]
             ];
             checkDefaults.forEach(function (cd) {
                 var el = document.getElementById(cd[0]);
@@ -418,6 +423,7 @@
             if (cache.lbGuestName !== undefined) document.getElementById("lb-guest-name").value = cache.lbGuestName;
             if (cache.lbPosition !== undefined) document.getElementById("lb-position").value = cache.lbPosition;
             if (cache.lbScore !== undefined) document.getElementById("lb-score").value = cache.lbScore;
+            if (cache.commentsDataFile) document.getElementById("comments-data-file").value = cache.commentsDataFile;
 
             // Feature toggles — set checkbox state then fire change event to update UI
             var toggles = [
@@ -425,6 +431,7 @@
                 ["opt-quote-cards", cache.optQuoteCards],
                 ["opt-yt-clips", cache.optYtClips],
                 ["opt-leaderboard", cache.optLeaderboard],
+                ["opt-comments", cache.optComments],
                 ["opt-hearts", cache.optHearts],
                 ["opt-sparkles", cache.optSparkles],
                 ["opt-name-mogrt", cache.optNameMogrt]
@@ -710,6 +717,8 @@
         document.getElementById("set-hearts-mogrt").value = settings.heartsMogrt;
         document.getElementById("set-qc-template-psd").value = settings.qcTemplatePsd;
         document.getElementById("set-name-mogrt").value = settings.nameMogrt;
+        document.getElementById("set-comment-mogrt-1").value = settings.commentMogrt1Line;
+        document.getElementById("set-comment-mogrt-2").value = settings.commentMogrt2Line;
         document.getElementById("set-title-card-mov").value = settings.titleCardMov;
         document.getElementById("set-endcard-nologo-mov").value = settings.endCardNoLogoMov;
         document.getElementById("set-endcard2-mov").value = settings.endCard2Mov;
@@ -730,6 +739,8 @@
         settings.heartsMogrt = document.getElementById("set-hearts-mogrt").value;
         settings.qcTemplatePsd = document.getElementById("set-qc-template-psd").value;
         settings.nameMogrt = document.getElementById("set-name-mogrt").value;
+        settings.commentMogrt1Line = document.getElementById("set-comment-mogrt-1").value;
+        settings.commentMogrt2Line = document.getElementById("set-comment-mogrt-2").value;
         settings.titleCardMov = document.getElementById("set-title-card-mov").value;
         settings.endCardNoLogoMov = document.getElementById("set-endcard-nologo-mov").value;
         settings.endCard2Mov = document.getElementById("set-endcard2-mov").value;
@@ -1019,24 +1030,18 @@
         log("info", "WhisperX: " + settings.whisperXExe + " model=" + settings.whisperXModel + " device=" + settings.whisperXDevice);
         log("info", "FFmpeg: "  + settings.ffmpegExe);
 
-        log("info", "[DBG] About to initCacheDir...");
         try {
             Processing.initCacheDir(pathMod.dirname(ctx.scriptPath));
-            log("info", "[DBG] initCacheDir done");
-        } catch (e) { log("warn", "[DBG] initCacheDir error: " + e.message); }
+        } catch (e) { log("warn", "Cache dir init error: " + e.message); }
         try {
             Processing.cleanupOldCacheFiles(pathMod.join(pathMod.dirname(ctx.scriptPath), ".whisper_cache"), 7);
-            log("info", "[DBG] cleanupOldCacheFiles done");
-        } catch (e) { log("warn", "[DBG] cleanupOldCacheFiles error: " + e.message); }
+        } catch (e) { /* ignore cleanup errors */ }
 
-        log("info", "[DBG] step1 returning Promise.resolve()");
         return Promise.resolve();
     }
 
     function step2_detectPartDurations(ctx) {
-        log("info", "[DBG] step2 ENTERED");
         checkAbort();
-        log("info", "[DBG] step2 checkAbort passed");
         updateProgress(6, "Detecting part durations...");
         log("info", "Detecting part durations...");
 
@@ -1167,6 +1172,22 @@
                 }
             } catch (e) {
                 log("warn", "Quote card parsing failed: " + e.message);
+            }
+        }
+
+        // Parse comments data file
+        ctx.commentsData = [];
+        if (ctx.optComments) {
+            var commentsDataPath = document.getElementById("comments-data-file").value;
+            if (commentsDataPath && fs.existsSync(commentsDataPath)) {
+                try {
+                    ctx.commentsData = Comments.parseCommentsFile(fs.readFileSync(commentsDataPath, "utf8"));
+                    log("info", "Comments: " + ctx.commentsData.length + " entries parsed");
+                } catch (e) {
+                    log("warn", "Comments file parsing failed: " + e.message);
+                }
+            } else if (commentsDataPath) {
+                log("warn", "Comments data file not found: " + commentsDataPath);
             }
         }
 
@@ -1496,6 +1517,17 @@
             }
         }
 
+        // Match comments to clip placements
+        ctx.commentPlacements = [];
+        if (ctx.optComments && ctx.commentsData.length > 0) {
+            ctx.commentPlacements = Comments.matchClipsToComments(ctx.entries, ctx.clipPlacements, ctx.commentsData);
+            log("info", "Comments: " + ctx.commentPlacements.length + " of " + ctx.commentsData.length + " comments matched to clips");
+            for (var cmi = 0; cmi < ctx.commentPlacements.length; cmi++) {
+                var cpl = ctx.commentPlacements[cmi];
+                log("info", "  COMMENT  " + cpl.username + ": " + (cpl.text.length > 60 ? cpl.text.substring(0, 60) + "..." : cpl.text) + " (score: " + cpl.score.toFixed(2) + ")");
+            }
+        }
+
         var totalClips = ctx.matchCount + ctx.noMatchCount;
         log("info", "── Match Summary ── Matched: " + ctx.matchCount + "  |  No Match: " + ctx.noMatchCount + "  |  Total clips: " + totalClips);
         if (ctx.noMatchCount > 0 && totalClips > 0 && (ctx.noMatchCount / totalClips) > 0.25) {
@@ -1554,6 +1586,7 @@
                 extAudioChannels:                 ctx.extAudioChannels,
                 hasQuoteCards:                    ctx.hasQuoteCards,
                 hasYouTubeClips:                  ctx.hasYouTubeClips,
+                hasComments:                      ctx.commentPlacements.length > 0,
                 hasScoringReveals:                ctx.hasScoringReveals && ctx.optHearts,
                 clipPlacements:                   ctx.clipPlacements,
                 endCardNoLogoPath:                endCardNoLogoPath,
@@ -1620,9 +1653,10 @@
     }
 
     function step8_generateJSXFiles(ctx) {
-        ctx.nameMogrtJSX  = null;
-        ctx.heartsJSXPath = null;
-        ctx.endLbJSXPath  = null;
+        ctx.nameMogrtJSX   = null;
+        ctx.heartsJSXPath  = null;
+        ctx.endLbJSXPath   = null;
+        ctx.commentsJSXPath = null;
 
         // Name MOGRT (AE MOGRT: getMGTComponent → JSON setValue; Premiere EG fallback: Source Text)
         if (ctx.xmemlResult.introData && settings.nameMogrt && fs.existsSync(settings.nameMogrt) && ctx.optNameMogrt) {
@@ -1678,6 +1712,33 @@
                 } catch (e) {
                     log("warn", "Hearts MOGRT copy/generate failed: " + e.message);
                 }
+            }
+        }
+
+        // Comments MOGRTs
+        if (ctx.commentPlacements.length > 0 && ctx.xmemlResult.commentsTrackIdx >= 0) {
+            var mogrt1Src = settings.commentMogrt1Line;
+            var mogrt2Src = settings.commentMogrt2Line;
+            if (mogrt1Src && fs.existsSync(mogrt1Src) && mogrt2Src && fs.existsSync(mogrt2Src)) {
+                try {
+                    var mogrt1Dest = pathMod.join(ctx.projectFolder, pathMod.basename(mogrt1Src));
+                    var mogrt2Dest = pathMod.join(ctx.projectFolder, pathMod.basename(mogrt2Src));
+                    fs.copyFileSync(mogrt1Src, mogrt1Dest);
+                    fs.copyFileSync(mogrt2Src, mogrt2Dest);
+
+                    var commentsJSX = Comments.generateJSX(
+                        mogrt1Dest, mogrt2Dest, ctx.commentPlacements,
+                        ctx.clipPlacements, ctx.fpsF, ctx.xmemlResult.commentsTrackIdx
+                    );
+                    ctx.commentsJSXPath = pathMod.join(ctx.projectFolder, "_comments.jsx");
+                    fs.writeFileSync(ctx.commentsJSXPath, commentsJSX, "utf8");
+                    log("info", "Comments script generated: " + ctx.commentsJSXPath +
+                        " (" + ctx.commentPlacements.length + " comments on track V" + (ctx.xmemlResult.commentsTrackIdx + 1) + ")");
+                } catch (e) {
+                    log("warn", "Comments MOGRT generation failed: " + e.message);
+                }
+            } else {
+                log("warn", "Comments: MOGRT files not found — configure Comment MOGRTs in Settings");
             }
         }
 
@@ -1755,7 +1816,17 @@
             });
         }
 
-        // ── Step 10c: Organize project bins ──
+        // ── Step 10c: Comments MOGRTs ──
+        if (ctx.commentsJSXPath) {
+            chain = chain.then(function () {
+                log("info", "Running Comments MOGRT placement script...");
+                return evalScriptPromise(fs.readFileSync(ctx.commentsJSXPath, "utf8")).then(function (cRes) {
+                    log("info", "Comments placement result: " + (cRes && cRes !== "undefined" ? cRes : "done"));
+                });
+            });
+        }
+
+        // ── Step 10d: Organize project bins ──
         chain = chain.then(function () {
             return evalHostScript("organizeProjectIntoBins()").then(function (bRes) {
                 if (bRes && bRes.indexOf("success") >= 0) log("info", "Project bins: " + bRes);
@@ -1763,7 +1834,7 @@
             });
         });
 
-        // ── Step 10d: End Leaderboard ──
+        // ── Step 10e: End Leaderboard ──
         if (ctx.endLbJSXPath) {
             chain = chain.then(function () {
                 log("info", "Running End Leaderboard placement script...");
@@ -1773,7 +1844,7 @@
             });
         }
 
-        // ── Step 10e: Offline media check + relink ──
+        // ── Step 10f: Offline media check + relink ──
         return chain.then(function () {
             log("info", "Checking for offline media...");
             var projectFolderPathFile = pathMod.join(ctx.projectFolder, "_pe_project_folder.txt");
@@ -1831,6 +1902,7 @@
             optLeaderboard: document.getElementById("opt-leaderboard").checked,
             optHearts:      document.getElementById("opt-hearts").checked,
             optSparkles:    document.getElementById("opt-sparkles").checked,
+            optComments:    document.getElementById("opt-comments").checked,
             optNameMogrt:   document.getElementById("opt-name-mogrt").checked,
             // Pipeline state (populated by step functions)
             camInfos: [], numCams: 0, hasExtAudio: false, validExtAudioParts: [],
@@ -1844,12 +1916,12 @@
             leaderboardMovInfo: null, leaderboardGridPngPath: null,
             hasScoringReveals: false, clipPlacements: [], matchCount: 0, noMatchCount: 0,
             xmemlResult: null, endLbTemplatesDir: null, endLbMissing: null, xmlPath: null,
-            nameMogrtJSX: null, heartsJSXPath: null, endLbJSXPath: null
+            nameMogrtJSX: null, heartsJSXPath: null, endLbJSXPath: null,
+            commentsData: [], commentPlacements: [], commentsJSXPath: null
         };
 
-        log("info", "[DBG] runProcessAsync: calling step1...");
         return step1_validateInputs(ctx)
-            .then(function () { log("info", "[DBG] step1 resolved, calling step2..."); return step2_detectPartDurations(ctx); })
+            .then(function () { return step2_detectPartDurations(ctx); })
             .then(function () { return step3_transcribeCameras(ctx); })
             .then(function () { return step4_autoSync(ctx); })
             .then(function () { return step5_parseAndSetupProject(ctx); })
@@ -1874,6 +1946,9 @@
                 log("success", "Project folder: " + ctx.projectFolder);
                 if (ctx.hasQuoteCards) {
                     log("info", "  Quote cards placed: " + Object.keys(ctx.qcCardMap).length);
+                }
+                if (ctx.commentPlacements.length > 0) {
+                    log("info", "  Comments placed: " + ctx.commentPlacements.length);
                 }
             });
     }
@@ -1922,6 +1997,7 @@
             wireFeatureToggle("opt-quote-cards", "qc-feature-body", ["opt-yt-clips"]);
             wireFeatureToggle("opt-leaderboard", "lb-feature-body");
             wireFeatureToggle("opt-ext-audio", "ext-audio-body");
+            wireFeatureToggle("opt-comments", "comments-feature-body");
             wireFeatureToggle("opt-hearts", null, ["opt-sparkles"]);
             wireFeatureToggle("opt-name-mogrt");
 

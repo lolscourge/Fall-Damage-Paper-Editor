@@ -374,7 +374,7 @@ var LeaderboardEnd = (function () {
 
         var j = "";
         j += "// Auto-generated End Leaderboard effects (keys + fades + resize)\n";
-        j += "var __endLbResult = (function () {\n";
+        j += "(function () {\n";
         j += "try {\n\n";
 
         // Log helper
@@ -385,7 +385,7 @@ var LeaderboardEnd = (function () {
         j += "try { var fi = new File(_LOG); fi.open('w'); fi.writeln('=== END LB EFFECTS ==='); fi.close(); } catch(e) {}\n\n";
 
         j += "var seq = app.project.activeSequence;\n";
-        j += "if (!seq) { logMsg('FATAL: no active sequence'); return 'ERROR: no active sequence'; }\n\n";
+        j += "if (!seq) { logMsg('FATAL: no active sequence'); return; }\n\n";
 
         j += "var totalVid = seq.videoTracks.numTracks;\n";
         j += "var totalAud = seq.audioTracks.numTracks;\n";
@@ -495,17 +495,16 @@ var LeaderboardEnd = (function () {
         j += "applyVolumeFade(audDrum,   " + fadeDrumIn  + ", 0);\n\n";
 
         j += "logMsg('=== DONE ===');\n";
-        j += "return 'DONE: End Leaderboard effects applied';\n\n";
+        j += "alert('End Leaderboard: resize and volume fades applied.\\nLuma Key + Ultra Key were embedded in the XMEML — check Effects Controls to confirm.');\n\n";
 
         j += "} catch (e) {\n";
         j += "    try {\n";
         j += "        var ef = new File(\"" + logDir + "/_leaderboard_end_log.txt\");\n";
         j += "        ef.open('a'); ef.writeln('UNHANDLED: ' + e.message + ' (line ' + e.line + ')'); ef.close();\n";
         j += "    } catch(le) {}\n";
-        j += "    return 'ERROR: ' + e.message;\n";
+        j += "    alert('End Leaderboard effects error: ' + e.message);\n";
         j += "}\n";
         j += "})();\n";
-        j += "__endLbResult;\n";
 
         return j;
     }

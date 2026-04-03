@@ -109,6 +109,20 @@
                     <button class="btn-browse" id="btn-process-lb">Process Leaderboard in After Effects</button>
                 </div>
 
+                <!-- Comments -->
+                <label class="feature-item">
+                    <input type="checkbox" id="opt-comments"> Comments
+                </label>
+                <div class="feature-body" id="comments-feature-body" style="display: none;">
+                    <div class="file-input-group">
+                        <label class="dim-label">Comments Data File (.txt)</label>
+                        <div class="file-row">
+                            <input type="text" id="comments-data-file" class="text-input" placeholder="Select comments file...">
+                            <button class="btn-browse" data-target="comments-data-file" data-type="file">Browse</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Simple toggles -->
                 <label class="feature-item" title="Place heart MOGRTs on score reveals">
                     <input type="checkbox" id="opt-hearts" checked> Hearts
@@ -223,6 +237,20 @@
                 </div>
             </div>
             <div class="file-input-group">
+                <label class="dim-label">Comment MOGRT 1-line (.mogrt)</label>
+                <div class="file-row">
+                    <input type="text" id="set-comment-mogrt-1" class="text-input" placeholder="Path to YouTubeComment.mogrt...">
+                    <button class="btn-browse" data-target="set-comment-mogrt-1" data-type="file">Browse</button>
+                </div>
+            </div>
+            <div class="file-input-group">
+                <label class="dim-label">Comment MOGRT 2-line (.mogrt)</label>
+                <div class="file-row">
+                    <input type="text" id="set-comment-mogrt-2" class="text-input" placeholder="Path to YouTube Comment 2 Line.mogrt...">
+                    <button class="btn-browse" data-target="set-comment-mogrt-2" data-type="file">Browse</button>
+                </div>
+            </div>
+            <div class="file-input-group">
                 <label class="dim-label">Title Card (.mov)</label>
                 <div class="file-row">
                     <input type="text" id="set-title-card-mov" class="text-input" placeholder="Path to QUOTES_Title Card.mov...">
@@ -277,6 +305,7 @@
     <script src="js/leaderboard-ae.js"></script>
     <script src="js/ae-runner.js"></script>
     <script src="js/leaderboard-end.js"></script>
+    <script src="js/comments.js"></script>
     <script src="js/name-mogrt.js"></script>
     <script src="js/main.js"></script>
 </body>

@@ -9,6 +9,7 @@ var PaperEditParser = (function () {
     var TC_REGEX       = /(\d{1,2}:\d{2}(?::\d{2})?(?::\d{2})?)/;
     var REVEAL_REGEX   = /^Reveal\s*[-\u2013\u2014]?\s*(.+)$/i;
     var LEADERBOARD_REVEAL_REGEX = /^Leaderboard\s+reveal\b/i;
+    var INSOUND_REGEX  = /^insound\b/i;
     var URL_REGEX      = /^(https?:\/\/\S+)(.*)$/;
 
     /**
@@ -79,6 +80,16 @@ var PaperEditParser = (function () {
                 continue;
             }
 
+            // Insound
+            if (INSOUND_REGEX.test(stripped)) {
+                if (currTC && buf.length) {
+                    entries.push({ type: "clip", tc: currTC, text: buf.join(" "), bracketNote: currBracket });
+                    currTC = null; currBracket = null; buf = [];
+                }
+                entries.push({ type: "insound", text: stripped });
+                continue;
+            }
+
             // URL
             var urlMatch = stripped.match(URL_REGEX);
             if (urlMatch) {
@@ -143,9 +154,27 @@ var PaperEditParser = (function () {
         return 0;
     }
 
+    /**
+     * Convert seconds to HH:MM:SS:FF timecode string.
+     */
+    function secondsToTc(sec, fps) {
+        fps = fps || 24;
+        if (sec < 0) sec = 0;
+        var totalFrames = Math.round(sec * fps);
+        var f = totalFrames % Math.round(fps);
+        var totalSec = Math.floor(totalFrames / Math.round(fps));
+        var s = totalSec % 60;
+        var totalMin = Math.floor(totalSec / 60);
+        var m = totalMin % 60;
+        var h = Math.floor(totalMin / 60);
+        function pad(n, w) { var str = String(n); while (str.length < w) str = "0" + str; return str; }
+        return pad(h, 2) + ":" + pad(m, 2) + ":" + pad(s, 2) + ":" + pad(f, 2);
+    }
+
     return {
         parse: parse,
         parseRevealScore: parseRevealScore,
-        tcToSeconds: tcToSeconds
+        tcToSeconds: tcToSeconds,
+        secondsToTc: secondsToTc
     };
 })();

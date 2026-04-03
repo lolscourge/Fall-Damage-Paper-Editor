@@ -1,0 +1,18 @@
+{
+  "whisperXExe": "C:\\Users\\harry\\AppData\\Roaming\\Adobe\\CEP\\extensions\\com.falldamage.papereditor\\bin\\whisperx_fd.exe",
+  "whisperXModel": "base.en",
+  "whisperXDevice": "cpu",
+  "ffmpegExe": "C:\\Users\\harry\\AppData\\Roaming\\Adobe\\CEP\\extensions\\com.falldamage.papereditor\\bin\\ffmpeg.exe",
+  "ffprobeExe": "C:\\Users\\harry\\AppData\\Roaming\\Adobe\\CEP\\extensions\\com.falldamage.papereditor\\bin\\ffprobe.exe",
+  "psExe": "C:\\Program Files\\Adobe\\Adobe Photoshop (Beta)\\Photoshop.exe",
+  "aeExe": "C:\\Program Files\\Adobe\\Adobe After Effects 2025\\Support Files\\afterfx.exe",
+  "ytDlpExe": "C:\\Users\\harry\\AppData\\Roaming\\Adobe\\CEP\\extensions\\com.falldamage.papereditor\\bin\\yt-dlp.exe",
+  "heartsMogrt": "C:\\Users\\harry\\AppData\\Roaming\\Adobe\\CEP\\extensions\\com.falldamage.papereditor\\templates\\Hearts_SINGLELINE_V3.mogrt",
+  "qcTemplatePsd": "C:\\Users\\harry\\AppData\\Roaming\\Adobe\\CEP\\extensions\\com.falldamage.papereditor\\templates\\Quote Card Template.psd",
+  "nameMogrt": "C:\\Users\\harry\\AppData\\Roaming\\Adobe\\CEP\\extensions\\com.falldamage.papereditor\\templates\\Name.mogrt",
+  "titleCardMov": "C:\\Users\\harry\\AppData\\Roaming\\Adobe\\CEP\\extensions\\com.falldamage.papereditor\\templates\\QUOTES_Title Card.mov",
+  "endCardNoLogoMov": "C:\\Users\\harry\\AppData\\Roaming\\Adobe\\CEP\\extensions\\com.falldamage.papereditor\\templates\\16-9 fall damage END CARD_nologo.mov",
+  "endCard2Mov": "C:\\Users\\harry\\AppData\\Roaming\\Adobe\\CEP\\extensions\\com.falldamage.papereditor\\templates\\16-9 fall damage END CARD 2.mov",
+  "matchThreshold": 0.5,
+  "similarityWeight": 0.7
+}
